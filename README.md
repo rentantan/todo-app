@@ -1,42 +1,43 @@
 ````markdown
 # 📝 Todo アプリ
 
-React + TypeScript と Tailwind CSS で構築したシンプルな Todo アプリです。  
-ユーザーはタスクを追加・編集・削除・完了管理でき、フィルタリングやダークモードにも対応しています。  
-データはブラウザのローカルストレージに保存されるため、ページをリロードしてもタスクが保持されます。
+React + TypeScript + Tailwind CSS で構築したシンプルかつ直感的な Todo アプリです。  
+タスクの追加・編集・削除・完了管理に加えて、ドラッグ＆ドロップによる並び替え、フィルタリング、ダークモードもサポートしています。  
+データはブラウザの **ローカルストレージ** に保存され、リロード後も保持されます。
 
 ---
 
 ## 🚀 主な機能
 
 - ✅ タスクの追加、編集、削除
-- ✅ タスク完了 / 未完了の管理
-- 🔎 タスクのフィルタリング（すべて / 未完了 / 完了）
-- 🌙 ダークモード対応
-- 💾 タスクの自動保存（ローカルストレージ）
+- ✅ タスクの完了/未完了管理
+- 🔎 フィルタリング（すべて / 未完了 / 完了）
+- ↕️ **ドラッグ＆ドロップによる並び替え**（`@hello-pangea/dnd`）
+- 🌙 ダークモード切り替え
+- 💾 ローカルストレージへの自動保存
 
 ---
 
 ## 🧩 動作環境（推奨）
 
-- Node.js 18+ / npm 8+
-- Git
-- ブラウザ（Chrome, Firefox, Edge 推奨）
+- Node.js **18+**
+- npm **8+**
+- 最新のブラウザ（Chrome, Firefox, Edge 推奨）
 
 ---
 
 ## 📁 ディレクトリ構成
 
 ```plaintext
-todo-app/
+frontend/
 ├── src/
 │   ├── components/
 │   │   ├── Layout/
 │   │   │   └── Card.tsx
-│   │   ├── Todo/
-│   │   │   ├── Todo.tsx
-│   │   │   ├── TodoForm.tsx
-│   │   │   └── TodoList.tsx
+│   │   └── Todo/
+│   │       ├── Todo.tsx
+│   │       ├── TodoForm.tsx
+│   │       └── TodoList.tsx
 │   ├── types.ts
 │   ├── App.tsx
 │   └── index.tsx
@@ -44,6 +45,7 @@ todo-app/
 ├── package.json
 ├── tsconfig.json
 ├── tailwind.config.js
+├── postcss.config.js
 ├── .gitignore
 ├── README.md
 └── LICENSE
@@ -56,8 +58,8 @@ todo-app/
 1️⃣ リポジトリをクローン
 
 ```bash
-git clone <リポジトリURL>
-cd todo-app
+git clone https://github.com/rentantan/todo-app
+cd frontend
 ```
 
 2️⃣ 依存関係をインストール
@@ -69,21 +71,20 @@ npm install
 3️⃣ 開発サーバー起動
 
 ```bash
-npm start  # CRA の場合
-# npm run dev  # Vite の場合
+npm start
 ```
 
-ブラウザで [http://localhost:3000](http://localhost:3000) にアクセスしてアプリを確認できます。
+ブラウザで [http://localhost:3000](http://localhost:3000) を開くとアプリを確認できます。
 
 ---
 
-## 🛠 よくあるトラブルと対処法
+## 🛠 トラブルシューティング
 
-| 問題                | 対処法                                          |
-| ----------------- | -------------------------------------------- |
-| npm install が失敗する | Node.js と npm のバージョンを確認し、再インストール             |
-| CSS が反映されない       | Tailwind CSS の設定を確認、`npm start` を再起動         |
-| ダークモードが反映されない     | `darkMode` state と `className="dark"` の設定を確認 |
+| 問題                  | 対処法                               |
+| ------------------- | --------------------------------- |
+| `npm install` が失敗する | Node.js / npm のバージョンを確認し再インストール   |
+| CSS が反映されない         | Tailwind の設定を確認し、`npm start` を再実行 |
+| ダークモードが効かない         | `darkMode: 'class'` の設定とクラス付与を確認  |
 
 ---
 
@@ -93,22 +94,31 @@ npm start  # CRA の場合
 
 ---
 
-## 🧭 開発ルール（推奨）
+## 🧭 コミットメッセージ規約（推奨）
 
-* コミットメッセージは下記を統一すると履歴が明快です：
-
-  * `feat:` 新機能追加
-  * `fix:` バグ修正
-  * `chore:` ドキュメント・設定変更
-* フロントエンドは単一リポジトリで管理可能ですが、機能ごとにブランチ分けが推奨
+* `feat:` 新機能追加
+* `fix:` バグ修正
+* `style:` コード整形や UI 微調整
+* `docs:` ドキュメント修正
+* `chore:` 環境構築・依存関係・設定関連
 
 ---
 
-## ➕ 拡張アイデア
+## ➕ 今後の拡張アイデア
 
-* ⏱ タスクの締切日を追加
-* 📊 完了率や統計の表示
-* 👤 ユーザーごとのタスク管理（ログイン機能追加）
-* 🎨 UI を Tailwind CSS や Chakra UI でさらに強化
+* ⏱ タスクの締切日設定
+* 📊 完了率や統計の可視化
+* 👤 ユーザー認証によるマルチユーザー対応
+* 🎨 UI/UX のさらなる強化（Chakra UI, Framer Motion など）
 
-```
+````
+
+---
+
+### ✨ コミット例
+
+```bash
+git add .
+git commit -m "docs: README を追加しセットアップ手順を追記"
+git push origin main
+````
