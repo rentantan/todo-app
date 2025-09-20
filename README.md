@@ -112,13 +112,3 @@ npm start
 * 🎨 UI/UX のさらなる強化（Chakra UI, Framer Motion など）
 
 ````
-
----
-
-### ✨ コミット例
-
-```bash
-git add .
-git commit -m "docs: README を追加しセットアップ手順を追記"
-git push origin main
-````
