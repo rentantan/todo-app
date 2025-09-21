@@ -1,36 +1,53 @@
-# dependencies
-/frontend/node_modules
-/frontend/.pnp
-/frontend/.pnp.js
+# ---------------------
+# Python / Django
+# ---------------------
+__pycache__/
+*.py[cod]
+*$py.class
 
-# testing
-/frontend/coverage
+# 仮想環境
+backend/venv/
+backend/env/
+backend/.venv/
 
-# production
-/frontend/build
-/frontend/dist
+# Django
+backend/*.log
+backend/*.pot
+backend/*.pyc
+backend/db.sqlite3
+backend/media/
 
-# environment variables
-/frontend/.env
-/frontend/.env.local
-/frontend/.env.development.local
-/frontend/.env.test.local
-/frontend/.env.production.local
+# Environment variables
+backend/.env
+backend/.env.*
 
-# logs
-/frontend/npm-debug.log*
-/frontend/yarn-debug.log*
-/frontend/yarn-error.log*
+# ---------------------
+# Node / Frontend
+# ---------------------
+frontend/node_modules/
+frontend/.pnp
+frontend/.pnp.js
+frontend/coverage
+frontend/build
+frontend/dist
 
-# OS / misc
+# Environment variables
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# Logs
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# IDE / OS
+frontend/.vscode/
+frontend/.idea/
+frontend/*.tsbuildinfo
+
 .DS_Store
 Thumbs.db
-
-# TypeScript
-/frontend/*.tsbuildinfo
-
-# IDE
-/frontend/.vscode/
-/frontend/.idea/
-
-/backend/venv
+repomix-output.xml
