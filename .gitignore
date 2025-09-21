@@ -32,3 +32,5 @@ Thumbs.db
 # IDE
 /frontend/.vscode/
 /frontend/.idea/
+
+/backend/venv
