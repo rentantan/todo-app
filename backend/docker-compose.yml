@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: todoapp_db
+      POSTGRES_USER: todoapp_user
+      POSTGRES_PASSWORD: todoapp_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - todoapp_network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - todoapp_network
+
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - DATABASE_URL=postgresql://todoapp_user:todoapp_password@db:5432/todoapp_db
+    depends_on:
+      - db
+      - redis
+    networks:
+      - todoapp_network
+
+volumes:
+  postgres_data:
+
+networks:
+  todoapp_network:
+    driver: bridge
