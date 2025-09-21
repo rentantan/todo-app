@@ -1,91 +1,186 @@
 import React, { useState, useEffect } from "react";
+import { AuthProvider } from "./contexts/AuthContext";
+import ProtectedRoute from "./components/Auth/ProtectedRoute";
 import Card from "./components/Layout/Card";
+import Header from "./components/Layout/Header";
 import TodoForm from "./components/Todo/TodoForm";
 import TodoList from "./components/Todo/TodoList";
+import TodoFilters, { FilterState } from "./components/Todo/TodoFilters";
 import { TodoType } from "./types";
+import todoService, { TodoFilters as APIFilters } from "./services/todoService";
 
-function App() {
-  const [todos, setTodos] = useState<TodoType[]>(() => {
-    const saved = localStorage.getItem("todos");
-    return saved ? JSON.parse(saved) : [];
+function TodoApp() {
+  const [todos, setTodos] = useState<TodoType[]>([]);
+  const [filters, setFilters] = useState<FilterState>({
+    status: 'all',
+    search: '',
+    showOverdue: false,
+    showDueToday: false
   });
-  const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved ? JSON.parse(saved) : false;
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [todoStats, setTodoStats] = useState({
+    total: 0,
+    active: 0,
+    completed: 0,
+    overdue: 0
+  });
 
   useEffect(() => {
-    localStorage.setItem("todos", JSON.stringify(todos));
-  }, [todos]);
+    localStorage.setItem('darkMode', JSON.stringify(darkMode));
+  }, [darkMode]);
 
-  const addTodo = (name: string) => {
-    setTodos([...todos, { id: crypto.randomUUID(), name, completed: false }]);
+  const fetchTodos = async () => {
+    setIsLoading(true);
+    try {
+      // フィルターをAPI形式に変換
+      const apiFilters: APIFilters = {
+        search: filters.search || undefined,
+        priority: filters.priority,
+        overdue: filters.showOverdue || undefined,
+        due_today: filters.showDueToday || undefined
+      };
+
+      // ステータスフィルター
+      if (filters.status === 'active') {
+        apiFilters.completed = false;
+      } else if (filters.status === 'completed') {
+        apiFilters.completed = true;
+      }
+
+      const response = await todoService.getTodos(apiFilters);
+      setTodos(response.results);
+
+      // 統計情報を更新
+      const allTodos = await todoService.getTodos({});
+      const completed = allTodos.results.filter(todo => todo.completed).length;
+      const active = allTodos.results.length - completed;
+      const overdue = allTodos.results.filter(todo => 
+        todo.due_date && new Date(todo.due_date) < new Date() && !todo.completed
+      ).length;
+
+      setTodoStats({
+        total: allTodos.results.length,
+        active,
+        completed,
+        overdue
+      });
+
+    } catch (error) {
+      console.error('Failed to fetch todos:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const toggleTodo = (id: string) => {
-    setTodos(todos.map(todo => todo.id === id ? { ...todo, completed: !todo.completed } : todo));
+  useEffect(() => {
+    fetchTodos();
+  }, [filters]);
+
+  const handleReorder = async (reorderedTodos: TodoType[]) => {
+    // オプティミスティックアップデート
+    setTodos(reorderedTodos);
+
+    try {
+      const reorderData = {
+        todo_orders: reorderedTodos.map((todo, index) => ({
+          id: todo.id,
+          order_index: String(index)
+        }))
+      };
+      await todoService.reorderTodos(reorderData);
+    } catch (error) {
+      console.error('Failed to reorder todos:', error);
+      // エラー時は元の順序に戻す
+      fetchTodos();
+    }
   };
 
-  const deleteTodo = (id: string) => {
-    setTodos(todos.filter(todo => todo.id !== id));
+  const handleClearCompleted = async () => {
+    if (!window.confirm('完了済みのタスクをすべて削除しますか？')) return;
+
+    try {
+      await todoService.clearCompletedTodos();
+      fetchTodos();
+    } catch (error) {
+      console.error('Failed to clear completed todos:', error);
+    }
   };
 
-  const editTodo = (id: string, newName: string) => {
-    setTodos(todos.map(todo => todo.id === id ? { ...todo, name: newName } : todo));
-  };
+  const handleBulkComplete = async () => {
+    const activeTodos = todos.filter(todo => !todo.completed);
+    if (activeTodos.length === 0) return;
 
-  const clearCompleted = () => {
-    setTodos(todos.filter(todo => !todo.completed));
+    try {
+      await todoService.bulkUpdateTodos({
+        todo_ids: activeTodos.map(todo => todo.id),
+        action: 'complete'
+      });
+      fetchTodos();
+    } catch (error) {
+      console.error('Failed to bulk complete todos:', error);
+    }
   };
-
-  const filteredTodos = todos.filter(todo => {
-    if (filter === "active") return !todo.completed;
-    if (filter === "completed") return todo.completed;
-    return true;
-  });
 
   return (
     <div className={darkMode ? "dark" : ""}>
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex justify-center items-start p-4">
         <Card>
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-2xl font-bold text-black">
-              Todoアプリ
-            </h1>
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className="px-2 py-1 border rounded text-black hover:bg-gray-200"
-            >
-              {darkMode ? "ライトモード" : "ダークモード"}
-            </button>
-          </div>
+          <Header darkMode={darkMode} setDarkMode={setDarkMode} />
 
-          <TodoForm addTodo={addTodo} />
+          <TodoForm onTodoAdded={fetchTodos} />
 
-          <div className="flex gap-2 mb-2">
-            <button onClick={() => setFilter("all")} className="px-2 py-1 border rounded text-black hover:bg-gray-200">すべて</button>
-            <button onClick={() => setFilter("active")} className="px-2 py-1 border rounded text-black hover:bg-gray-200">未完了</button>
-            <button onClick={() => setFilter("completed")} className="px-2 py-1 border rounded text-black hover:bg-gray-200">完了</button>
-          </div>
-
-          <TodoList
-            todos={filteredTodos}
-            toggleTodo={toggleTodo}
-            deleteTodo={deleteTodo}
-            editTodo={editTodo}
-            setTodos={setTodos}
+          <TodoFilters 
+            filters={filters}
+            onFiltersChange={setFilters}
+            todoStats={todoStats}
           />
 
-          <div className="mt-4 flex justify-between items-center">
-            <button
-              onClick={clearCompleted}
-              className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-            >
-              完了タスクを削除
-            </button>
-            <span className="text-black">残りのタスク: {todos.filter(todo => !todo.completed).length}</span>
+          <TodoList
+            todos={todos}
+            onReorder={handleReorder}
+            onTodoUpdated={fetchTodos}
+            isLoading={isLoading}
+          />
+
+          {/* アクションボタン */}
+          <div className="mt-6 flex flex-wrap gap-3 justify-between items-center">
+            <div className="flex gap-2">
+              <button
+                onClick={handleClearCompleted}
+                disabled={todoStats.completed === 0}
+                className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                完了タスクを削除
+              </button>
+              <button
+                onClick={handleBulkComplete}
+                disabled={todoStats.active === 0}
+                className="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                すべて完了
+              </button>
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              残りのタスク: {todoStats.active}
+            </div>
           </div>
         </Card>
       </div>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <ProtectedRoute>
+        <TodoApp />
+      </ProtectedRoute>
+    </AuthProvider>
   );
 }
 
