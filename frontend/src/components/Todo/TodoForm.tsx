@@ -1,116 +1,100 @@
-import React, { useState } from "react";
-import todoService from "../../services/todoService";
+import React, { useState } from 'react';
+import { TodoInput } from '../../services/todoService';
+import { Category, Priority } from '../../types';
+import { fromLocalInputValue } from '../../utils/date';
+import CategoryPicker from '../Category/CategoryPicker';
 
 interface TodoFormProps {
-  onTodoAdded: () => void;
+  categories: Category[];
+  onCreate: (data: TodoInput) => Promise<boolean>;
 }
 
-const TodoForm: React.FC<TodoFormProps> = ({ onTodoAdded }) => {
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    priority: "medium" as "low" | "medium" | "high",
-    due_date: ""
-  });
+const INITIAL = { name: '', description: '', priority: 'medium' as Priority, due_date: '', category_ids: [] as string[] };
+
+const TodoForm: React.FC<TodoFormProps> = ({ categories, onCreate }) => {
+  const [form, setForm] = useState(INITIAL);
+  const [showDetails, setShowDetails] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.name.trim()) return;
-    
+    if (!form.name.trim()) return;
+
     setIsSubmitting(true);
-    try {
-      const todoData = {
-        name: formData.name,
-        description: formData.description || undefined,
-        priority: formData.priority,
-        due_date: formData.due_date || undefined
-      };
-      
-      await todoService.createTodo(todoData);
-      
-      // フォームをリセット
-      setFormData({
-        name: "",
-        description: "",
-        priority: "medium",
-        due_date: ""
-      });
-      
-      onTodoAdded();
-    } catch (error) {
-      console.error('Failed to create todo:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
+    const ok = await onCreate({
+      name: form.name.trim(),
+      description: form.description.trim(),
+      priority: form.priority,
+      due_date: fromLocalInputValue(form.due_date),
+      category_ids: form.category_ids,
+    });
+    setIsSubmitting(false);
+    // 失敗時は入力内容を残す
+    if (ok) setForm((prev) => ({ ...INITIAL, priority: prev.priority, category_ids: prev.category_ids }));
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 mb-6">
-      <div>
+    <form onSubmit={handleSubmit} className="mb-6 space-y-3">
+      <div className="flex gap-2">
         <input
           type="text"
           name="name"
-          value={formData.name}
+          value={form.name}
           onChange={handleChange}
-          placeholder="新しいタスクを入力"
-          className="w-full p-3 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          required
+          placeholder="新しいタスクを入力して Enter"
+          maxLength={500}
+          className="input flex-1 py-3 text-base"
+          aria-label="タスク名"
         />
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            placeholder="説明（任意）"
-            rows={2}
-            className="w-full p-2 text-sm border border-gray-300 rounded dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
-          />
-        </div>
-        
-        <div>
-          <select
-            name="priority"
-            value={formData.priority}
-            onChange={handleChange}
-            className="w-full p-2 text-sm border border-gray-300 rounded dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          >
-            <option value="low">優先度: 低</option>
-            <option value="medium">優先度: 中</option>
-            <option value="high">優先度: 高</option>
-          </select>
-        </div>
-        
-        <div>
-          <input
-            type="datetime-local"
-            name="due_date"
-            value={formData.due_date}
-            onChange={handleChange}
-            className="w-full p-2 text-sm border border-gray-300 rounded dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-        </div>
+        <button type="submit" disabled={isSubmitting || !form.name.trim()} className="btn btn-primary px-5">
+          {isSubmitting ? '追加中...' : '追加'}
+        </button>
       </div>
 
       <button
-        type="submit"
-        disabled={isSubmitting}
-        className="w-full px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        type="button"
+        onClick={() => setShowDetails((v) => !v)}
+        className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        aria-expanded={showDetails}
       >
-        {isSubmitting ? "追加中..." : "追加"}
+        {showDetails ? '▼' : '▶'} 詳細（説明・優先度・期限・カテゴリ）
       </button>
+
+      {showDetails && (
+        <div className="space-y-3">
+          <textarea
+            name="description"
+            value={form.description}
+            onChange={handleChange}
+            placeholder="説明（任意）"
+            rows={2}
+            className="input w-full resize-none"
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <select name="priority" value={form.priority} onChange={handleChange} className="input" aria-label="優先度">
+              <option value="high">優先度: 高</option>
+              <option value="medium">優先度: 中</option>
+              <option value="low">優先度: 低</option>
+            </select>
+            <input
+              type="datetime-local"
+              name="due_date"
+              value={form.due_date}
+              onChange={handleChange}
+              className="input"
+              aria-label="期限"
+            />
+          </div>
+          <CategoryPicker
+            categories={categories}
+            selectedIds={form.category_ids}
+            onChange={(ids) => setForm((prev) => ({ ...prev, category_ids: ids }))}
+          />
+        </div>
+      )}
     </form>
   );
 };

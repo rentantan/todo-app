@@ -1,10 +1,11 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from .models import User
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, validators=[validate_password])
+    password = serializers.CharField(write_only=True)
     password_confirm = serializers.CharField(write_only=True)
 
     class Meta:
@@ -13,8 +14,19 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
-            raise serializers.ValidationError("パスワードが一致しません。")
+            raise serializers.ValidationError({'password_confirm': "パスワードが一致しません。"})
+        # ユーザー属性との類似チェックも行うため、仮のユーザーを渡して検証する
+        candidate = User(**{k: v for k, v in attrs.items() if k not in ('password', 'password_confirm')})
+        try:
+            validate_password(attrs['password'], user=candidate)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError({'password': list(e.messages)})
         return attrs
+
+    def validate_email(self, value):
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("このメールアドレスは既に登録されています。")
+        return User.objects.normalize_email(value)
 
     def create(self, validated_data):
         validated_data.pop('password_confirm')
@@ -25,6 +37,11 @@ class UserLoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField()
 
+    @staticmethod
+    def _resolve_email(email):
+        user = User.objects.filter(email__iexact=email).only('email').first()
+        return user.email if user else email
+
     def validate(self, attrs):
         email = attrs.get('email')
         password = attrs.get('password')
@@ -32,7 +49,8 @@ class UserLoginSerializer(serializers.Serializer):
         if email and password:
             user = authenticate(
                 request=self.context.get('request'),
-                **{User.USERNAME_FIELD: email}, 
+                # 大文字・小文字を区別せずにメールアドレスを照合する
+                **{User.USERNAME_FIELD: self._resolve_email(email)},
                 password=password
             )
             if not user:
@@ -63,7 +81,7 @@ class PasswordChangeSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         if attrs['new_password'] != attrs['confirm_password']:
-            raise serializers.ValidationError("新しいパスワードが一致しません。")
+            raise serializers.ValidationError({'confirm_password': "新しいパスワードが一致しません。"})
         return attrs
 
     def validate_old_password(self, value):

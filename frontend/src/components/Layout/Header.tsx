@@ -3,47 +3,38 @@ import { useAuth } from '../../contexts/AuthContext';
 
 interface HeaderProps {
   darkMode: boolean;
-  setDarkMode: (darkMode: boolean) => void;
+  onToggleDarkMode: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ darkMode, setDarkMode }) => {
+const Header: React.FC<HeaderProps> = ({ darkMode, onToggleDarkMode }) => {
   const { user, logout } = useAuth();
 
-  const handleLogout = async () => {
-    if (window.confirm('ログアウトしますか？')) {
-      await logout();
-    }
+  const handleLogout = () => {
+    if (window.confirm('ログアウトしますか？')) logout();
   };
 
+  const displayName = [user?.last_name, user?.first_name].filter(Boolean).join(' ') || user?.username;
+
   return (
-    <div className="flex justify-between items-center mb-6">
+    <header className="flex justify-between items-start gap-3 mb-6">
       <div>
-        <h1 className="text-3xl font-bold text-black">
-          Todoアプリ
-        </h1>
-        {user && (
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            こんにちは、{user.first_name || user.username}さん
-          </p>
-        )}
+        <h1 className="text-2xl sm:text-3xl font-bold">📝 Todoアプリ</h1>
+        {user && <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">こんにちは、{displayName}さん</p>}
       </div>
-
-      <div className="flex items-center space-x-3">
+      <div className="flex items-center gap-2 shrink-0">
         <button
-          onClick={() => setDarkMode(!darkMode)}
-          className="px-3 py-2 border rounded-lg text-black hover:bg-gray-200 dark:border-white dark:hover:bg-gray-700 transition-colors"
+          onClick={onToggleDarkMode}
+          className="btn btn-ghost text-lg"
+          title={darkMode ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
+          aria-label={darkMode ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
         >
-          {darkMode ? 'ライトモード' : 'ダークモード'}
+          {darkMode ? '☀️' : '🌙'}
         </button>
-
-        <button
-          onClick={handleLogout}
-          className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-        >
+        <button onClick={handleLogout} className="btn btn-ghost border border-gray-300 dark:border-gray-600">
           ログアウト
         </button>
       </div>
-    </div>
+    </header>
   );
 };
 

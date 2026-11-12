@@ -1,30 +1,20 @@
 import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import AuthPage from './AuthPage';
+import Spinner from '../Layout/Spinner';
 
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-}
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isInitializing } = useAuth();
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { user, isLoading } = useAuth();
-
-  if (isLoading) {
+  if (isInitializing) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">読み込み中...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+        <Spinner label="読み込み中..." />
       </div>
     );
   }
 
-  if (!user) {
-    return <AuthPage />;
-  }
-
-  return <>{children}</>;
+  return user ? <>{children}</> : <AuthPage />;
 };
 
 export default ProtectedRoute;

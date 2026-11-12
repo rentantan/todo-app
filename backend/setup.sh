@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
+cd "$(dirname "$0")"
 
 # Django Todo Backend セットアップスクリプト
 
@@ -6,7 +8,7 @@ echo "🚀 Django Todo Backend セットアップを開始します..."
 
 # 仮想環境の作成
 echo "📦 仮想環境を作成中..."
-python -m venv venv
+python3 -m venv venv
 
 # 仮想環境の有効化（OS別）
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
@@ -37,9 +39,6 @@ fi
 
 # マイグレーションの実行
 echo "🗄️ データベースマイグレーションを実行中..."
-python manage.py makemigrations
-python manage.py makemigrations accounts
-python manage.py makemigrations todos
 python manage.py migrate
 
 echo "✅ マイグレーションが完了しました"
@@ -52,12 +51,6 @@ if [[ $create_superuser == "y" || $create_superuser == "Y" ]]; then
     echo "✅ スーパーユーザーを作成しました"
 fi
 
-# 静的ファイルの収集
-echo "📄 静的ファイルを収集中..."
-python manage.py collectstatic --noinput
-
-echo "✅ 静的ファイルの収集が完了しました"
-
 echo ""
 echo "🎉 セットアップが完了しました！"
 echo ""
@@ -66,8 +59,5 @@ echo "  python manage.py runserver"
 echo ""
 echo "管理画面にアクセス:"
 echo "  http://localhost:8000/admin/"
-echo ""
-echo "API仕様書:"
-echo "  http://localhost:8000/api/"
 echo ""
 echo "Happy coding! 🚀"

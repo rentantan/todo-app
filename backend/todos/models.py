@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -34,27 +35,16 @@ class Todo(models.Model):
     def __str__(self):
         return f"{self.name} - {self.user.email}"
 
-    # todos/models.py の Todo モデル内
-
     def save(self, *args, **kwargs):
-        is_new_object = not self.pk
-        old_completed = None
-
-        if not is_new_object:
-            try:
-                old_todo = Todo.objects.get(pk=self.pk)
-                old_completed = old_todo.completed
-            except Todo.DoesNotExist:
-                # 非常にまれなケースだが、既存のオブジェクトが見つからなかった場合の処理
-                pass
-        
-        # 完了状態が変更された場合、または新規作成時に完了状態がTrueの場合
-        if self.completed and (is_new_object or old_completed is not self.completed):
-            from django.utils import timezone
+        # completed の変化に合わせて completed_at を自動更新する
+        # （UUID は生成済みのため self.pk では新規判定できない。DB から直前の値を取得する）
+        old_completed = (
+            Todo.objects.filter(pk=self.pk).values_list('completed', flat=True).first()
+        )
+        if self.completed and not old_completed:
             self.completed_at = timezone.now()
-        elif not self.completed and old_completed is not self.completed:
+        elif not self.completed:
             self.completed_at = None
-            
         super().save(*args, **kwargs)
 
 class Category(models.Model):

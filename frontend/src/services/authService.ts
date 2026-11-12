@@ -1,18 +1,9 @@
-import apiClient from './api';
-import { User } from '../types';
+import apiClient, { tokenStorage } from './api';
+import { RegisterData, User } from '../types';
 
 export interface LoginData {
   email: string;
   password: string;
-}
-
-export interface RegisterData {
-  email: string;
-  username: string;
-  first_name: string;
-  last_name: string;
-  password: string;
-  password_confirm: string;
 }
 
 export interface AuthResponse {
@@ -28,84 +19,64 @@ export interface PasswordChangeData {
   confirm_password: string;
 }
 
-class AuthService {
-  // ユーザー登録
+const saveSession = (data: AuthResponse) => {
+  tokenStorage.set(data.access, data.refresh);
+  localStorage.setItem('user', JSON.stringify(data.user));
+};
+
+const authService = {
   async register(data: RegisterData): Promise<AuthResponse> {
-    const response = await apiClient.post<AuthResponse>('/auth/register/', data);
-    const authData = response.data;
-    
-    localStorage.setItem('access_token', authData.access);
-    localStorage.setItem('refresh_token', authData.refresh);
-    localStorage.setItem('user', JSON.stringify(authData.user));
-    
-    return authData;
-  }
+    const res = await apiClient.post<AuthResponse>('/auth/register/', data);
+    saveSession(res.data);
+    return res.data;
+  },
 
-  // ログイン
   async login(data: LoginData): Promise<AuthResponse> {
-    const response = await apiClient.post<AuthResponse>('/auth/login/', data);
-    const authData = response.data;
-    
-    localStorage.setItem('access_token', authData.access);
-    localStorage.setItem('refresh_token', authData.refresh);
-    localStorage.setItem('user', JSON.stringify(authData.user));
-    
-    return authData;
-  }
+    const res = await apiClient.post<AuthResponse>('/auth/login/', data);
+    saveSession(res.data);
+    return res.data;
+  },
 
-  // ログアウト
   async logout(): Promise<void> {
     try {
-      const refreshToken = localStorage.getItem('refresh_token');
-      if (refreshToken) {
-        await apiClient.post('/auth/logout/', { refresh: refreshToken });
-      }
-    } catch (error) {
-      console.error('Logout error:', error);
+      const refresh = tokenStorage.getRefresh();
+      if (refresh) await apiClient.post('/auth/logout/', { refresh });
+    } catch {
+      // サーバー側の失敗に関わらずローカルのセッションは破棄する
     } finally {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('user');
+      tokenStorage.clear();
     }
-  }
+  },
 
-  // プロフィール取得
   async getProfile(): Promise<User> {
-    const response = await apiClient.get<User>('/auth/profile/');
-    return response.data;
-  }
+    const res = await apiClient.get<User>('/auth/profile/');
+    localStorage.setItem('user', JSON.stringify(res.data));
+    return res.data;
+  },
 
-  // プロフィール更新
-  async updateProfile(data: Partial<User>): Promise<User> {
-    const response = await apiClient.put<User>('/auth/profile/', data);
-    const updatedUser = response.data;
-    localStorage.setItem('user', JSON.stringify(updatedUser));
-    return updatedUser;
-  }
+  async updateProfile(data: Partial<Pick<User, 'first_name' | 'last_name' | 'username'>>): Promise<User> {
+    const res = await apiClient.patch<User>('/auth/profile/', data);
+    localStorage.setItem('user', JSON.stringify(res.data));
+    return res.data;
+  },
 
-  // パスワード変更
   async changePassword(data: PasswordChangeData): Promise<{ message: string }> {
-    const response = await apiClient.post<{ message: string }>('/auth/change-password/', data);
-    return response.data;
-  }
+    const res = await apiClient.post<{ message: string }>('/auth/change-password/', data);
+    return res.data;
+  },
 
-  // 現在のユーザー取得
-  getCurrentUser(): User | null {
-    const userStr = localStorage.getItem('user');
-    return userStr ? JSON.parse(userStr) : null;
-  }
+  getCachedUser(): User | null {
+    try {
+      const str = localStorage.getItem('user');
+      return str ? JSON.parse(str) : null;
+    } catch {
+      return null;
+    }
+  },
 
-  // 認証状態確認
-  isAuthenticated(): boolean {
-    const token = localStorage.getItem('access_token');
-    const user = this.getCurrentUser();
-    return !!(token && user);
-  }
+  hasSession(): boolean {
+    return !!(tokenStorage.getAccess() || tokenStorage.getRefresh());
+  },
+};
 
-  // トークン取得
-  getAccessToken(): string | null {
-    return localStorage.getItem('access_token');
-  }
-}
-
-export default new AuthService();
+export default authService;

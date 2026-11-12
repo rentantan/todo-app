@@ -1,132 +1,110 @@
 import React from 'react';
+import { Category, Priority, TodoStats } from '../../types';
 
 export interface FilterState {
   status: 'all' | 'active' | 'completed';
-  priority?: 'low' | 'medium' | 'high';
+  priority?: Priority;
+  category?: string;
   search: string;
   showOverdue: boolean;
   showDueToday: boolean;
 }
 
+export const DEFAULT_FILTERS: FilterState = {
+  status: 'all',
+  priority: undefined,
+  category: undefined,
+  search: '',
+  showOverdue: false,
+  showDueToday: false,
+};
+
+export const hasActiveFilters = (f: FilterState) =>
+  f.status !== 'all' || !!f.priority || !!f.category || !!f.search.trim() || f.showOverdue || f.showDueToday;
+
 interface TodoFiltersProps {
   filters: FilterState;
-  onFiltersChange: (filters: FilterState) => void;
-  todoStats: {
-    total: number;
-    active: number;
-    completed: number;
-    overdue: number;
-  };
+  onChange: (filters: FilterState) => void;
+  stats: TodoStats | null;
+  categories: Category[];
 }
 
-const TodoFilters: React.FC<TodoFiltersProps> = ({
-  filters,
-  onFiltersChange,
-  todoStats
-}) => {
-  const handleFilterChange = (key: keyof FilterState, value: any) => {
-    onFiltersChange({
-      ...filters,
-      [key]: value
-    });
-  };
+const ToggleChip: React.FC<{ active: boolean; activeClass: string; onClick: () => void; children: React.ReactNode }> = ({
+  active, activeClass, onClick, children,
+}) => (
+  <button type="button" onClick={onClick} aria-pressed={active} className={`chip ${active ? `${activeClass} text-white hover:opacity-90` : ''}`}>
+    {children}
+  </button>
+);
+
+const TodoFilters: React.FC<TodoFiltersProps> = ({ filters, onChange, stats, categories }) => {
+  const set = <K extends keyof FilterState>(key: K, value: FilterState[K]) => onChange({ ...filters, [key]: value });
 
   return (
-    <div className="space-y-4 mb-6">
-      {/* 検索バー */}
-      <div>
-        <input
-          type="text"
-          placeholder="タスクを検索..."
-          value={filters.search}
-          onChange={(e) => handleFilterChange('search', e.target.value)}
-          className="w-full p-3 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
-        />
+    <div className="space-y-3 mb-5">
+      <input
+        type="search"
+        placeholder="🔍 タスクを検索..."
+        value={filters.search}
+        onChange={(e) => set('search', e.target.value)}
+        className="input w-full"
+        aria-label="タスクを検索"
+      />
+
+      <div className="flex flex-wrap gap-2">
+        <ToggleChip active={filters.status === 'all'} activeClass="!bg-blue-500" onClick={() => set('status', 'all')}>
+          すべて ({stats?.total_todos ?? 0})
+        </ToggleChip>
+        <ToggleChip active={filters.status === 'active'} activeClass="!bg-orange-500" onClick={() => set('status', 'active')}>
+          未完了 ({stats?.pending_todos ?? 0})
+        </ToggleChip>
+        <ToggleChip active={filters.status === 'completed'} activeClass="!bg-green-500" onClick={() => set('status', 'completed')}>
+          完了 ({stats?.completed_todos ?? 0})
+        </ToggleChip>
       </div>
 
-      {/* ステータスフィルター */}
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => handleFilterChange('status', 'all')}
-          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-            filters.status === 'all'
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          すべて ({todoStats.total})
-        </button>
-        <button
-          onClick={() => handleFilterChange('status', 'active')}
-          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-            filters.status === 'active'
-              ? 'bg-orange-500 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          未完了 ({todoStats.active})
-        </button>
-        <button
-          onClick={() => handleFilterChange('status', 'completed')}
-          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-            filters.status === 'completed'
-              ? 'bg-green-500 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          完了 ({todoStats.completed})
-        </button>
-      </div>
-
-      {/* 優先度・特殊フィルター */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 items-center">
         <select
-          value={filters.priority || ''}
-          onChange={(e) => handleFilterChange('priority', e.target.value || undefined)}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          value={filters.priority ?? ''}
+          onChange={(e) => set('priority', (e.target.value || undefined) as Priority | undefined)}
+          className="input"
+          aria-label="優先度で絞り込み"
         >
-          <option value="">全ての優先度</option>
+          <option value="">すべての優先度</option>
           <option value="high">優先度: 高</option>
           <option value="medium">優先度: 中</option>
           <option value="low">優先度: 低</option>
         </select>
 
-        <button
-          onClick={() => handleFilterChange('showOverdue', !filters.showOverdue)}
-          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-            filters.showOverdue
-              ? 'bg-red-500 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          期限切れのみ ({todoStats.overdue})
-        </button>
+        {categories.length > 0 && (
+          <select
+            value={filters.category ?? ''}
+            onChange={(e) => set('category', e.target.value || undefined)}
+            className="input"
+            aria-label="カテゴリで絞り込み"
+          >
+            <option value="">すべてのカテゴリ</option>
+            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        )}
 
-        <button
-          onClick={() => handleFilterChange('showDueToday', !filters.showDueToday)}
-          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-            filters.showDueToday
-              ? 'bg-purple-500 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          今日期限
-        </button>
+        <ToggleChip active={filters.showOverdue} activeClass="!bg-red-500" onClick={() => set('showOverdue', !filters.showOverdue)}>
+          期限切れ ({stats?.overdue_todos ?? 0})
+        </ToggleChip>
+        <ToggleChip active={filters.showDueToday} activeClass="!bg-purple-500" onClick={() => set('showDueToday', !filters.showDueToday)}>
+          今日期限 ({stats?.due_today_todos ?? 0})
+        </ToggleChip>
+
+        {hasActiveFilters(filters) && (
+          <button
+            type="button"
+            onClick={() => onChange(DEFAULT_FILTERS)}
+            className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline"
+          >
+            クリア
+          </button>
+        )}
       </div>
-
-      {/* フィルタークリア */}
-      <button
-        onClick={() => onFiltersChange({
-          status: 'all',
-          priority: undefined,
-          search: '',
-          showOverdue: false,
-          showDueToday: false
-        })}
-        className="text-sm text-gray-500 hover:text-gray-700 underline"
-      >
-        フィルターをクリア
-      </button>
     </div>
   );
 };

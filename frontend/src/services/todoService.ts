@@ -1,125 +1,64 @@
 import apiClient from './api';
-import { TodoType } from '../types';
+import { Priority, TodoStats, TodoType } from '../types';
 
-export interface CreateTodoData {
+export interface TodoInput {
   name: string;
   description?: string;
-  priority?: 'low' | 'medium' | 'high';
-  due_date?: string;
+  priority?: Priority;
+  due_date?: string | null;
+  completed?: boolean;
   category_ids?: string[];
 }
 
-export interface UpdateTodoData extends Partial<CreateTodoData> {
+export interface TodoQuery {
   completed?: boolean;
-}
-
-export interface TodoFilters {
-  completed?: boolean;
-  priority?: 'low' | 'medium' | 'high';
+  priority?: Priority;
   category?: string;
   search?: string;
-  due_date?: string;
   overdue?: boolean;
   due_today?: boolean;
   due_this_week?: boolean;
+  ordering?: string;
 }
 
-export interface ReorderData {
-  todo_orders: { id: string; order_index: string }[];
-}
+export type BulkAction = 'complete' | 'incomplete' | 'delete';
 
-export interface BulkUpdateData {
-  todo_ids: string[];
-  action: 'complete' | 'incomplete' | 'delete';
-}
-
-export interface TodoStats {
-  total_todos: number;
-  completed_todos: number;
-  pending_todos: number;
-  completion_rate: number;
-  overdue_todos: number;
-  today_completed: number;
-  week_completed: number;
-  categories_stats: Record<
-    string,
-    { total: number; completed: number; pending: number }
-  >;
-}
-
-export interface TodoListResponse {
-  results: TodoType[];
-  count: number;
-}
-
-class TodoService {
-  // Todo一覧取得
-  async getTodos(filters?: TodoFilters): Promise<TodoListResponse> {
-    const params = new URLSearchParams();
-    if (filters) {
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-          params.append(key, String(value));
-        }
-      });
-    }
-
-    const response = await apiClient.get<TodoListResponse>(`/todos/?${params.toString()}`);
-    return response.data;
-  }
-
-  // Todo詳細取得
-  async getTodo(id: string): Promise<TodoType> {
-    const response = await apiClient.get<TodoType>(`/todos/${id}/`);
-    return response.data;
-  }
-
-  // Todo作成
-  async createTodo(data: CreateTodoData): Promise<TodoType> {
-    const response = await apiClient.post<TodoType>('/todos/', data);
-    return response.data;
-  }
-
-  // Todo更新
-  async updateTodo(id: string, data: UpdateTodoData): Promise<TodoType> {
-    const response = await apiClient.put<TodoType>(`/todos/${id}/`, data);
-    return response.data;
-  }
-
-  // Todo削除
+const todoService = {
+  async getTodos(query: TodoQuery = {}): Promise<TodoType[]> {
+    const params: Record<string, string> = {};
+    Object.entries(query).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '' && value !== false) {
+        params[key] = String(value);
+      }
+    });
+    return (await apiClient.get<TodoType[]>('/todos/', { params })).data;
+  },
+  async createTodo(data: TodoInput): Promise<TodoType> {
+    return (await apiClient.post<TodoType>('/todos/', data)).data;
+  },
+  async updateTodo(id: string, data: Partial<TodoInput>): Promise<TodoType> {
+    return (await apiClient.patch<TodoType>(`/todos/${id}/`, data)).data;
+  },
   async deleteTodo(id: string): Promise<void> {
     await apiClient.delete(`/todos/${id}/`);
-  }
-
-  // Todo完了状態切り替え
+  },
   async toggleTodo(id: string): Promise<TodoType> {
-    const response = await apiClient.patch<TodoType>(`/todos/${id}/toggle/`);
-    return response.data;
-  }
+    return (await apiClient.patch<TodoType>(`/todos/${id}/toggle/`)).data;
+  },
+  async reorderTodos(orderedIds: string[]): Promise<void> {
+    await apiClient.post('/todos/reorder/', {
+      todo_orders: orderedIds.map((id, index) => ({ id, order_index: index })),
+    });
+  },
+  async bulkUpdate(ids: string[], action: BulkAction): Promise<{ message: string; count: number }> {
+    return (await apiClient.post('/todos/bulk-update/', { todo_ids: ids, action })).data;
+  },
+  async clearCompleted(): Promise<{ message: string; count: number }> {
+    return (await apiClient.delete('/todos/clear-completed/')).data;
+  },
+  async getStats(): Promise<TodoStats> {
+    return (await apiClient.get<TodoStats>('/todos/stats/')).data;
+  },
+};
 
-  // Todo並び替え
-  async reorderTodos(data: ReorderData): Promise<{ message: string }> {
-    const response = await apiClient.post<{ message: string }>('/todos/reorder/', data);
-    return response.data;
-  }
-
-  // Todo一括操作
-  async bulkUpdateTodos(data: BulkUpdateData): Promise<{ message: string }> {
-    const response = await apiClient.post<{ message: string }>('/todos/bulk-update/', data);
-    return response.data;
-  }
-
-  // 完了済みTodo一括削除
-  async clearCompletedTodos(): Promise<{ message: string }> {
-    const response = await apiClient.delete<{ message: string }>('/todos/clear-completed/');
-    return response.data;
-  }
-
-  // Todo統計情報取得
-  async getTodoStats(): Promise<TodoStats> {
-    const response = await apiClient.get<TodoStats>('/todos/stats/');
-    return response.data;
-  }
-}
-
-export default new TodoService();
+export default todoService;

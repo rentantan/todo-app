@@ -1,130 +1,173 @@
-````markdown
 # 📝 Todo アプリ
 
-このプロジェクトは、React と TypeScript で構築されたフロントエンドと、Django REST API で構築されたバックエンドで構成される、モダンな Todo 管理アプリケーションです。
+React + TypeScript のフロントエンドと、Django REST Framework のバックエンドで作ったタスク管理アプリです。
+JWT 認証でユーザーごとにタスクを管理でき、カテゴリ分け・絞り込み・ドラッグ＆ドロップでの並び替えができます。
+
+| | 使用技術 |
+|---|---|
+| **フロントエンド** | React 19 / TypeScript / Tailwind CSS / Axios / @hello-pangea/dnd |
+| **バックエンド** | Django 5.2 / Django REST Framework / Simple JWT / django-filter |
+| **データベース** | SQLite（開発用・デフォルト） / PostgreSQL（Docker） |
 
 ---
 
-## 🚀 主な機能
+## 目次
 
-### 認証機能
-- JWT 認証によるセキュアなログイン
-- ユーザー登録
-- 自動トークン更新
-
-### Todo 機能
-- タスクの作成、編集、削除
-- 完了ステータスの切り替え
-- 並び替え、ドラッグ＆ドロップ
-- 一括操作（完了・削除）
-
-### 高度なフィルタリング
-- 状態、優先度、期限、キーワードでタスクを絞り込み
-
-### UI/UX
-- レスポンシブデザイン
-- ダークモード
-- ローディング状態表示
-- 親切なエラーメッセージ
-
-### API 連携
-- フロントエンドとバックエンドが分離しており、スケーラブルな開発が可能
+- [主な機能](#-主な機能)
+- [クイックスタート](#-クイックスタート)
+- [環境変数](#️-環境変数)
+- [API 一覧](#-api-一覧)
+- [ディレクトリ構成](#-ディレクトリ構成)
+- [開発用コマンド](#-開発用コマンド)
 
 ---
 
-## 💻 技術スタック
+## ✨ 主な機能
 
-### フロントエンド
-- コア技術: React (TypeScript), Tailwind CSS
-- ライブラリ: React Router DOM, Axios, @hello-pangea/dnd
-- 状態管理: React Context API
+**タスク管理**
+- タスクの追加・編集・削除（名前／説明／優先度／期限／カテゴリ）
+- チェックで完了・未完了を切り替え（完了日時を自動記録）
+- ドラッグ＆ドロップで並び替え（順序はサーバーに保存）
+- 「すべて完了」「完了タスクを削除」の一括操作
 
-### バックエンド
-- コア技術: Django, Django REST Framework
-- 認証: django-rest-framework-simplejwt
-- データベース: SQLite (開発用) / PostgreSQL (本番用)
+**整理・検索**
+- 色付きカテゴリの作成・削除、タスクへの複数付与
+- キーワード検索 / 状態・優先度・カテゴリ・期限切れ・今日期限で絞り込み
+- 進捗バー（完了率・今日／今週の完了数）
+
+**使いやすさ**
+- ダークモード（初回は OS の設定に追従）
+- 操作結果やエラーをトースト通知で表示
+- ダブルクリックで編集、`⌘/Ctrl + Enter` で保存、`Esc` でキャンセル
+- スマートフォンでも使えるレスポンシブレイアウト
+
+**認証**
+- メールアドレスでの登録・ログイン（JWT）
+- アクセストークンの自動更新、ログアウト時のトークン無効化
 
 ---
 
-## 🛠 セットアップ手順
+## 🚀 クイックスタート
 
-### 全体共通
-リポジトリをクローンします。
+### 必要なもの
+
+- Python 3.11 以上
+- Node.js 18 以上
+
+### 1. リポジトリを取得
 
 ```bash
-git clone [ここにGitHubリポジトリのURLを挿入]
-````
-
----
-
-### フロントエンドのセットアップ
-
-1. ディレクトリに移動
-
-```bash
-cd frontend
+git clone <このリポジトリの URL>
+cd todo-app
 ```
 
-2. 依存関係をインストール
-
-```bash
-npm install
-```
-
-3. 環境変数を設定
-
-```bash
-cp .env.example .env
-# .env 内の REACT_APP_API_URL をバックエンドの URL に設定
-```
-
-4. 開発サーバーを起動
-
-```bash
-npm start
-```
-
----
-
-### バックエンドのセットアップ
-
-1. 仮想環境作成・有効化
+### 2. バックエンドを起動（ターミナル 1）
 
 ```bash
 cd backend
-python -m venv venv
-
-# Windows
-venv\Scripts\activate
-# macOS/Linux
-source venv/bin/activate
-```
-
-2. 依存関係をインストール
-
-```bash
+python3 -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-```
-
-3. 環境変数を設定
-
-```bash
-cp .env.example .env
-# 必要に応じて設定を編集
-```
-
-4. データベースのマイグレーション
-
-```bash
-python manage.py makemigrations
+cp .env.example .env            # 必要に応じて編集
 python manage.py migrate
-```
-
-5. 開発サーバー起動
-
-```bash
 python manage.py runserver
 ```
+
+→ API: <http://localhost:8000/api/> / 管理画面: <http://localhost:8000/admin/>
+
+> 💡 `./setup.sh` を実行すると、上記の手順（仮想環境の作成〜マイグレーション）をまとめて実行できます。
+
+### 3. フロントエンドを起動（ターミナル 2）
+
+```bash
+cd frontend
+npm install
+cp .env.example .env
+npm start
+```
+
+→ アプリ: <http://localhost:3000>
+
+画面の「新規登録」からアカウントを作ればすぐに使えます。
+
+### Docker で動かす場合（PostgreSQL）
+
+```bash
+cd backend
+docker compose up --build
+```
+
+バックエンドと PostgreSQL が起動し、マイグレーションも自動で実行されます。フロントエンドは上記の手順 3 で起動してください。
+
+---
+
+## ⚙️ 環境変数
+
+### バックエンド（`backend/.env`）
+
+| 変数 | 既定値 | 説明 |
+|---|---|---|
+| `DEBUG` | `True` | 本番では `False` |
+| `SECRET_KEY` | 開発用の値 | `DEBUG=False` のときは**必須** |
+| `ALLOWED_HOSTS` | `localhost,127.0.0.1,0.0.0.0` | カンマ区切り |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | フロントエンドの URL（カンマ区切り） |
+| `DATABASE_URL` | SQLite (`backend/db.sqlite3`) | 例: `postgresql://user:pass@localhost:5432/db` |
+| `JWT_ACCESS_MINUTES` | `60` | アクセストークンの有効期限（分） |
+| `JWT_REFRESH_DAYS` | `7` | リフレッシュトークンの有効期限（日） |
+
+### フロントエンド（`frontend/.env`）
+
+| 変数 | 既定値 | 説明 |
+|---|---|---|
+| `REACT_APP_API_URL` | `http://localhost:8000/api` | バックエンド API の URL |
+
+---
+
+## 📡 API 一覧
+
+`/api/auth/register/` と `/api/auth/login/` 以外は `Authorization: Bearer <access token>` ヘッダーが必要です。
+
+<details>
+<summary><b>認証</b> <code>/api/auth/</code></summary>
+
+| メソッド | パス | 説明 |
+|---|---|---|
+| POST | `register/` | ユーザー登録（トークンを返す） |
+| POST | `login/` | ログイン（トークンを返す） |
+| POST | `logout/` | ログアウト（`refresh` を無効化） |
+| POST | `token/refresh/` | アクセストークンの再発行 |
+| GET / PATCH | `profile/` | プロフィールの取得・更新 |
+| POST | `change-password/` | パスワード変更 |
+
+</details>
+
+<details>
+<summary><b>タスク</b> <code>/api/todos/</code></summary>
+
+| メソッド | パス | 説明 |
+|---|---|---|
+| GET | `todos/` | 一覧（下記の絞り込みが使えます） |
+| POST | `todos/` | 作成 |
+| GET / PATCH / PUT / DELETE | `todos/<id>/` | 取得・更新・削除 |
+| PATCH | `todos/<id>/toggle/` | 完了状態の切り替え |
+| POST | `todos/reorder/` | 並び替え `{"todo_orders": [{"id", "order_index"}]}` |
+| POST | `todos/bulk-update/` | 一括操作 `{"todo_ids": [...], "action": "complete" \| "incomplete" \| "delete"}` |
+| DELETE | `todos/clear-completed/` | 完了済みを一括削除 |
+| GET | `todos/stats/` | 統計情報 |
+
+**絞り込みパラメータ**: `search` / `completed` / `priority` (`low`・`medium`・`high`) / `category` / `overdue` / `due_today` / `due_this_week` / `due_date_gte` / `due_date_lte` / `ordering`
+
+</details>
+
+<details>
+<summary><b>カテゴリ</b> <code>/api/categories/</code></summary>
+
+| メソッド | パス | 説明 |
+|---|---|---|
+| GET / POST | `categories/` | 一覧・作成 `{"name", "color": "#RRGGBB"}` |
+| GET / PATCH / PUT / DELETE | `categories/<id>/` | 取得・更新・削除 |
+
+</details>
 
 ---
 
@@ -132,16 +175,56 @@ python manage.py runserver
 
 ```plaintext
 todo-app/
-├── frontend/             # React フロントエンド
-│   ├── src/
-│   │   ├── components/
-│   │   ├── contexts/
-│   │   ├── services/
-│   │   └── App.tsx
-│   └── ...
-└── backend/              # Django バックエンド
-    ├── todo_app/
-    ├── venv/
-    ├── manage.py
-    └── ...
+├── backend/                  # Django REST API
+│   ├── config/               #   設定（settings.py / urls.py）
+│   ├── accounts/             #   ユーザー認証（カスタム User モデル・JWT）
+│   ├── todos/                #   タスク・カテゴリ（models / views / filters / tests）
+│   ├── requirements.txt
+│   ├── .env.example
+│   ├── setup.sh              #   初回セットアップスクリプト
+│   ├── Dockerfile
+│   └── docker-compose.yml
+│
+└── frontend/                 # React アプリ
+    ├── src/
+    │   ├── components/
+    │   │   ├── Auth/         #   ログイン・新規登録
+    │   │   ├── Category/     #   カテゴリの管理・選択・表示
+    │   │   ├── Layout/       #   ヘッダー・カード・トースト
+    │   │   └── Todo/         #   タスクのフォーム・一覧・フィルター・進捗
+    │   ├── contexts/         #   AuthContext（ログイン状態）
+    │   ├── hooks/            #   useDarkMode / useDebounce
+    │   ├── services/         #   API 呼び出し（Axios）
+    │   ├── utils/            #   日付・エラー処理
+    │   ├── types.ts
+    │   └── App.tsx
+    └── .env.example
 ```
+
+### データモデル
+
+```plaintext
+User ─┬─< Todo >──< TodoCategory >──┐
+      └─< Category >────────────────┘
+```
+
+- **User**: UUID 主キー、メールアドレスでログイン
+- **Todo**: 名前・説明・優先度・期限・完了状態・並び順
+- **Category**: ユーザーごとの色付きラベル（同名は不可）
+
+---
+
+## 🧪 開発用コマンド
+
+| 目的 | コマンド |
+|---|---|
+| バックエンドのテスト | `cd backend && python manage.py test` |
+| 管理ユーザーの作成 | `cd backend && python manage.py createsuperuser` |
+| フロントエンドの型チェック | `cd frontend && npx tsc --noEmit` |
+| フロントエンドのビルド | `cd frontend && npm run build` |
+
+---
+
+## 📄 ライセンス
+
+[MIT License](./LICENSE)

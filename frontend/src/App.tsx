@@ -1,184 +1,219 @@
-import React, { useState, useEffect } from "react";
-import { AuthProvider } from "./contexts/AuthContext";
-import ProtectedRoute from "./components/Auth/ProtectedRoute";
-import Card from "./components/Layout/Card";
-import Header from "./components/Layout/Header";
-import TodoForm from "./components/Todo/TodoForm";
-import TodoList from "./components/Todo/TodoList";
-import TodoFilters, { FilterState } from "./components/Todo/TodoFilters";
-import { TodoType } from "./types";
-import todoService, { TodoFilters as APIFilters } from "./services/todoService";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import ProtectedRoute from './components/Auth/ProtectedRoute';
+import CategoryManager from './components/Category/CategoryManager';
+import Card from './components/Layout/Card';
+import Header from './components/Layout/Header';
+import Toast, { ToastMessage } from './components/Layout/Toast';
+import TodoFilters, { DEFAULT_FILTERS, FilterState, hasActiveFilters } from './components/Todo/TodoFilters';
+import TodoForm from './components/Todo/TodoForm';
+import TodoList from './components/Todo/TodoList';
+import TodoStatsBar from './components/Todo/TodoStatsBar';
+import { AuthProvider } from './contexts/AuthContext';
+import { useDarkMode } from './hooks/useDarkMode';
+import { useDebounce } from './hooks/useDebounce';
+import categoryService from './services/categoryService';
+import todoService, { TodoInput, TodoQuery } from './services/todoService';
+import { Category, TodoStats, TodoType } from './types';
+import { getErrorMessage } from './utils/errors';
 
-function TodoApp() {
+const toQuery = (f: FilterState): TodoQuery => ({
+  search: f.search.trim() || undefined,
+  priority: f.priority,
+  category: f.category,
+  overdue: f.showOverdue,
+  due_today: f.showDueToday,
+  completed: f.status === 'all' ? undefined : f.status === 'completed',
+});
+
+interface TodoAppProps {
+  darkMode: boolean;
+  onToggleDarkMode: () => void;
+}
+
+function TodoApp({ darkMode, onToggleDarkMode }: TodoAppProps) {
   const [todos, setTodos] = useState<TodoType[]>([]);
-  const [filters, setFilters] = useState<FilterState>({
-    status: 'all',
-    search: '',
-    showOverdue: false,
-    showDueToday: false
-  });
-  const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem('darkMode');
-    return saved ? JSON.parse(saved) : false;
-  });
+  const [stats, setStats] = useState<TodoStats | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [isLoading, setIsLoading] = useState(true);
-  const [todoStats, setTodoStats] = useState({
-    total: 0,
-    active: 0,
-    completed: 0,
-    overdue: 0
-  });
+  const [toast, setToast] = useState<ToastMessage | null>(null);
+
+  // 検索欄の入力ごとに API を叩かないよう遅延させる
+  const debouncedSearch = useDebounce(filters.search, 300);
+  const query = useMemo(
+    () => toQuery({ ...filters, search: debouncedSearch }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [debouncedSearch, filters.status, filters.priority, filters.category, filters.showOverdue, filters.showDueToday]
+  );
+  const filtering = hasActiveFilters(filters);
+
+  const notify = useCallback((text: string, type: ToastMessage['type'] = 'success') => {
+    setToast({ id: Date.now(), type, text });
+  }, []);
+  const closeToast = useCallback(() => setToast(null), []);
+  const notifyError = useCallback((err: unknown, fallback: string) => notify(getErrorMessage(err, fallback), 'error'), [notify]);
+
+  // 古いリクエストの結果で新しい結果を上書きしないためのカウンター
+  const requestId = useRef(0);
+
+  const reload = useCallback(async () => {
+    const id = ++requestId.current;
+    try {
+      const [list, s] = await Promise.all([todoService.getTodos(query), todoService.getStats()]);
+      if (id !== requestId.current) return;
+      setTodos(list);
+      setStats(s);
+    } catch (err) {
+      if (id === requestId.current) notifyError(err, 'タスクの読み込みに失敗しました。');
+    } finally {
+      if (id === requestId.current) setIsLoading(false);
+    }
+  }, [query, notifyError]);
+
+  const reloadCategories = useCallback(async () => {
+    try {
+      setCategories(await categoryService.getCategories());
+    } catch (err) {
+      notifyError(err, 'カテゴリの読み込みに失敗しました。');
+    }
+  }, [notifyError]);
 
   useEffect(() => {
-    localStorage.setItem('darkMode', JSON.stringify(darkMode));
-  }, [darkMode]);
+    reload();
+  }, [reload]);
 
-  const fetchTodos = async () => {
-    setIsLoading(true);
+  useEffect(() => {
+    reloadCategories();
+  }, [reloadCategories]);
+
+  const handleCreate = async (data: TodoInput) => {
     try {
-      // フィルターをAPI形式に変換
-      const apiFilters: APIFilters = {
-        search: filters.search || undefined,
-        priority: filters.priority,
-        overdue: filters.showOverdue || undefined,
-        due_today: filters.showDueToday || undefined
-      };
-
-      // ステータスフィルター
-      if (filters.status === 'active') {
-        apiFilters.completed = false;
-      } else if (filters.status === 'completed') {
-        apiFilters.completed = true;
-      }
-
-      const response = await todoService.getTodos(apiFilters);
-      setTodos(response.results);
-
-      // 統計情報を更新
-      const allTodos = await todoService.getTodos({});
-      const completed = allTodos.results.filter(todo => todo.completed).length;
-      const active = allTodos.results.length - completed;
-      const overdue = allTodos.results.filter(todo => 
-        todo.due_date && new Date(todo.due_date) < new Date() && !todo.completed
-      ).length;
-
-      setTodoStats({
-        total: allTodos.results.length,
-        active,
-        completed,
-        overdue
-      });
-
-    } catch (error) {
-      console.error('Failed to fetch todos:', error);
-    } finally {
-      setIsLoading(false);
+      await todoService.createTodo(data);
+      await reload();
+      return true;
+    } catch (err) {
+      notifyError(err, 'タスクを追加できませんでした。');
+      return false;
     }
   };
 
-  useEffect(() => {
-    fetchTodos();
-  }, [filters]);
-
-  const handleReorder = async (reorderedTodos: TodoType[]) => {
-    // オプティミスティックアップデート
-    setTodos(reorderedTodos);
-
+  const handleToggle = async (todo: TodoType) => {
+    // 楽観的更新：先に画面へ反映し、失敗したら再取得で戻す
+    setTodos((prev) => prev.map((t) => (t.id === todo.id ? { ...t, completed: !t.completed } : t)));
     try {
-      const reorderData = {
-        todo_orders: reorderedTodos.map((todo, index) => ({
-          id: todo.id,
-          order_index: String(index)
-        }))
-      };
-      await todoService.reorderTodos(reorderData);
-    } catch (error) {
-      console.error('Failed to reorder todos:', error);
-      // エラー時は元の順序に戻す
-      fetchTodos();
+      await todoService.toggleTodo(todo.id);
+    } catch (err) {
+      notifyError(err, '状態を変更できませんでした。');
     }
+    reload();
+  };
+
+  const handleUpdate = async (id: string, data: Partial<TodoInput>) => {
+    try {
+      const updated = await todoService.updateTodo(id, data);
+      setTodos((prev) => prev.map((t) => (t.id === id ? updated : t)));
+      reload();
+      reloadCategories();
+      return true;
+    } catch (err) {
+      notifyError(err, 'タスクを更新できませんでした。');
+      return false;
+    }
+  };
+
+  const handleDelete = async (todo: TodoType) => {
+    if (!window.confirm(`「${todo.name}」を削除しますか？`)) return;
+    setTodos((prev) => prev.filter((t) => t.id !== todo.id));
+    try {
+      await todoService.deleteTodo(todo.id);
+      notify('タスクを削除しました。');
+    } catch (err) {
+      notifyError(err, 'タスクを削除できませんでした。');
+    }
+    reload();
+    reloadCategories();
+  };
+
+  const handleReorder = async (reordered: TodoType[]) => {
+    const previous = todos;
+    setTodos(reordered);
+    try {
+      await todoService.reorderTodos(reordered.map((t) => t.id));
+    } catch (err) {
+      setTodos(previous);
+      notifyError(err, '並び替えを保存できませんでした。');
+    }
+  };
+
+  const visibleActive = todos.filter((t) => !t.completed);
+
+  const handleCompleteVisible = async () => {
+    try {
+      const res = await todoService.bulkUpdate(visibleActive.map((t) => t.id), 'complete');
+      notify(res.message);
+    } catch (err) {
+      notifyError(err, '一括完了に失敗しました。');
+    }
+    reload();
   };
 
   const handleClearCompleted = async () => {
-    if (!window.confirm('完了済みのタスクをすべて削除しますか？')) return;
-
+    if (!window.confirm(`完了済みのタスク ${stats?.completed_todos ?? 0} 件をすべて削除しますか？`)) return;
     try {
-      await todoService.clearCompletedTodos();
-      fetchTodos();
-    } catch (error) {
-      console.error('Failed to clear completed todos:', error);
+      const res = await todoService.clearCompleted();
+      notify(res.message);
+    } catch (err) {
+      notifyError(err, '削除に失敗しました。');
     }
-  };
-
-  const handleBulkComplete = async () => {
-    const activeTodos = todos.filter(todo => !todo.completed);
-    if (activeTodos.length === 0) return;
-
-    try {
-      await todoService.bulkUpdateTodos({
-        todo_ids: activeTodos.map(todo => todo.id),
-        action: 'complete'
-      });
-      fetchTodos();
-    } catch (error) {
-      console.error('Failed to bulk complete todos:', error);
-    }
+    reload();
+    reloadCategories();
   };
 
   return (
-    <div className={darkMode ? "dark" : ""}>
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex justify-center items-start p-4">
-        <Card>
-          <Header darkMode={darkMode} setDarkMode={setDarkMode} />
+    <div className="min-h-screen flex justify-center items-start p-2 sm:p-6">
+      <Card>
+        <Header darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} />
+        <TodoForm categories={categories} onCreate={handleCreate} />
+        <CategoryManager categories={categories} onChanged={() => { reloadCategories(); reload(); }} onError={(m) => notify(m, 'error')} />
+        <TodoStatsBar stats={stats} />
+        <TodoFilters filters={filters} onChange={setFilters} stats={stats} categories={categories} />
 
-          <TodoForm onTodoAdded={fetchTodos} />
+        <TodoList
+          todos={todos}
+          categories={categories}
+          isLoading={isLoading}
+          canReorder={!filtering}
+          hasFilters={filtering}
+          onReorder={handleReorder}
+          onToggle={handleToggle}
+          onUpdate={handleUpdate}
+          onDelete={handleDelete}
+        />
 
-          <TodoFilters 
-            filters={filters}
-            onFiltersChange={setFilters}
-            todoStats={todoStats}
-          />
-
-          <TodoList
-            todos={todos}
-            onReorder={handleReorder}
-            onTodoUpdated={fetchTodos}
-            isLoading={isLoading}
-          />
-
-          {/* アクションボタン */}
-          <div className="mt-6 flex flex-wrap gap-3 justify-between items-center">
-            <div className="flex gap-2">
-              <button
-                onClick={handleClearCompleted}
-                disabled={todoStats.completed === 0}
-                className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-              >
-                完了タスクを削除
-              </button>
-              <button
-                onClick={handleBulkComplete}
-                disabled={todoStats.active === 0}
-                className="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-              >
-                すべて完了
-              </button>
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              残りのタスク: {todoStats.active}
-            </div>
+        <footer className="mt-6 flex flex-wrap gap-3 justify-between items-center">
+          <div className="flex gap-2">
+            <button onClick={handleCompleteVisible} disabled={visibleActive.length === 0} className="btn btn-success">
+              {filtering ? '表示中をすべて完了' : 'すべて完了'}
+            </button>
+            <button onClick={handleClearCompleted} disabled={!stats?.completed_todos} className="btn btn-danger">
+              完了タスクを削除
+            </button>
           </div>
-        </Card>
-      </div>
+          <span className="text-sm text-gray-500 dark:text-gray-400">残りのタスク: {stats?.pending_todos ?? 0} 件</span>
+        </footer>
+      </Card>
+      <Toast toast={toast} onClose={closeToast} />
     </div>
   );
 }
 
 function App() {
+  // ログイン画面にもダークモードを適用するため、最上位で管理する
+  const [darkMode, setDarkMode] = useDarkMode();
   return (
     <AuthProvider>
       <ProtectedRoute>
-        <TodoApp />
+        <TodoApp darkMode={darkMode} onToggleDarkMode={() => setDarkMode(!darkMode)} />
       </ProtectedRoute>
     </AuthProvider>
   );
