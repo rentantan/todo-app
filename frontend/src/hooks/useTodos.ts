@@ -3,6 +3,7 @@ import categoryService from '../services/categoryService';
 import todoService from '../services/todoService';
 import { Category, TodoInput, TodoQuery, TodoStats, TodoType } from '../types';
 import { useConfirm } from '../contexts/ConfirmContext';
+import { excludeFromStats } from '../utils/todoStats';
 import { NotifyOptions } from './useToast';
 
 /** 削除を取り消せる猶予（ミリ秒） */
@@ -31,9 +32,10 @@ export const useTodos = (query: TodoQuery, { notify, notifyError }: Notifier) =>
     try {
       const [list, s] = await Promise.all([todoService.getTodos(query), todoService.getStats()]);
       if (id !== requestId.current) return;
-      const hiddenId = pendingDelete.current?.todo.id;
-      setTodos(hiddenId ? list.filter((t) => t.id !== hiddenId) : list);
-      setStats(s);
+      // 取り消し待ちのタスクは、サーバーにはまだ残っているので一覧・統計の両方から除く
+      const hidden = pendingDelete.current?.todo;
+      setTodos(hidden ? list.filter((t) => t.id !== hidden.id) : list);
+      setStats(hidden ? excludeFromStats(s, hidden) : s);
     } catch (err) {
       if (id === requestId.current) notifyError(err, 'タスクの読み込みに失敗しました。');
     } finally {
@@ -133,6 +135,7 @@ export const useTodos = (query: TodoQuery, { notify, notifyError }: Notifier) =>
   const remove = (todo: TodoType) => {
     commitDelete(); // 前の削除が猶予中なら先に確定する
     setTodos((prev) => prev.filter((t) => t.id !== todo.id));
+    setStats((prev) => (prev ? excludeFromStats(prev, todo) : prev));
     pendingDelete.current = { todo, timer: window.setTimeout(commitDelete, UNDO_MS) };
     notify(`「${todo.name}」を削除しました。`, 'success', {
       action: { label: '元に戻す', onClick: undoDelete },
