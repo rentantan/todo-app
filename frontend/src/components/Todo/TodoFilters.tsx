@@ -8,6 +8,7 @@ interface TodoFiltersProps {
   onChange: (filters: FilterState) => void;
   stats: TodoStats | null;
   categories: Category[];
+  searchRef?: React.Ref<HTMLInputElement>;
 }
 
 const ToggleChip: React.FC<{ active: boolean; activeClass: string; onClick: () => void; children: React.ReactNode }> = ({
@@ -18,16 +19,23 @@ const ToggleChip: React.FC<{ active: boolean; activeClass: string; onClick: () =
   </button>
 );
 
-const TodoFilters: React.FC<TodoFiltersProps> = ({ filters, onChange, stats, categories }) => {
+const TodoFilters: React.FC<TodoFiltersProps> = ({ filters, onChange, stats, categories, searchRef }) => {
   const set = <K extends keyof FilterState>(key: K, value: FilterState[K]) => onChange({ ...filters, [key]: value });
 
   return (
     <div className="space-y-3 mb-5">
       <input
         type="search"
-        placeholder="🔍 タスクを検索..."
+        ref={searchRef}
+        placeholder="🔍 タスクを検索（/）"
         value={filters.search}
         onChange={(e) => set('search', e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            set('search', '');
+            e.currentTarget.blur();
+          }
+        }}
         className="input w-full"
         aria-label="タスクを検索"
       />

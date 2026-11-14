@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import CategoryManager from '../components/Category/CategoryManager';
 import Card from '../components/Layout/Card';
 import Header from '../components/Layout/Header';
@@ -8,6 +8,7 @@ import TodoForm from '../components/Todo/TodoForm';
 import TodoList from '../components/Todo/TodoList';
 import TodoStatsBar from '../components/Todo/TodoStatsBar';
 import { useDebounce } from '../hooks/useDebounce';
+import { useShortcut } from '../hooks/useShortcut';
 import { useToast } from '../hooks/useToast';
 import { useTodos } from '../hooks/useTodos';
 import { DEFAULT_FILTERS, FilterState, hasActiveFilters, toQuery } from '../utils/todoFilters';
@@ -20,6 +21,11 @@ interface TodoPageProps {
 const TodoPage: React.FC<TodoPageProps> = ({ darkMode, onToggleDarkMode }) => {
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const { toast, notify, notifyError, closeToast } = useToast();
+
+  const newTodoRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  useShortcut('n', () => newTodoRef.current?.focus());
+  useShortcut('/', () => searchRef.current?.focus());
 
   // 検索欄の入力ごとに API を叩かないよう遅延させる
   const debouncedSearch = useDebounce(filters.search, 300);
@@ -39,10 +45,10 @@ const TodoPage: React.FC<TodoPageProps> = ({ darkMode, onToggleDarkMode }) => {
     <div className="min-h-screen flex justify-center items-start p-2 sm:p-6">
       <Card>
         <Header darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} onBeforeLogout={flushPendingDelete} />
-        <TodoForm categories={categories} onCreate={create} />
+        <TodoForm categories={categories} onCreate={create} inputRef={newTodoRef} />
         <CategoryManager categories={categories} onChanged={refreshAll} onError={(m) => notify(m, 'error')} />
         <TodoStatsBar stats={stats} />
-        <TodoFilters filters={filters} onChange={setFilters} stats={stats} categories={categories} />
+        <TodoFilters filters={filters} onChange={setFilters} stats={stats} categories={categories} searchRef={searchRef} />
 
         <TodoList
           todos={todos}

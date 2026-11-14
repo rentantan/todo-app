@@ -8,11 +8,12 @@ import DueDateInput from './DueDateInput';
 interface TodoFormProps {
   categories: Category[];
   onCreate: (data: TodoInput) => Promise<boolean>;
+  inputRef?: React.Ref<HTMLInputElement>;
 }
 
 const INITIAL = { name: '', description: '', priority: 'medium' as Priority, due_date: '', category_ids: [] as string[] };
 
-const TodoForm: React.FC<TodoFormProps> = ({ categories, onCreate }) => {
+const TodoForm: React.FC<TodoFormProps> = ({ categories, onCreate, inputRef }) => {
   const [form, setForm] = useState(INITIAL);
   const [showDetails, setShowDetails] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,7 +46,8 @@ const TodoForm: React.FC<TodoFormProps> = ({ categories, onCreate }) => {
           name="name"
           value={form.name}
           onChange={handleChange}
-          placeholder="新しいタスクを入力して Enter"
+          ref={inputRef}
+          placeholder="新しいタスクを入力して Enter（N）"
           maxLength={500}
           className="input flex-1 py-3 text-base"
           aria-label="タスク名"
