@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import categoryService from '../../services/categoryService';
 import { Category } from '../../types';
 import { getErrorMessage } from '../../utils/errors';
@@ -12,6 +13,7 @@ interface CategoryManagerProps {
 }
 
 const CategoryManager: React.FC<CategoryManagerProps> = ({ categories, onChanged, onError }) => {
+  const confirm = useConfirm();
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState('');
   const [color, setColor] = useState(PRESET_COLORS[0]);
@@ -33,8 +35,13 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ categories, onChanged
   };
 
   const handleDelete = async (category: Category) => {
-    const usage = category.todo_count ? `（${category.todo_count}件のタスクから外れます）` : '';
-    if (!window.confirm(`カテゴリ「${category.name}」を削除しますか？${usage}`)) return;
+    const ok = await confirm({
+      title: `カテゴリ「${category.name}」を削除しますか？`,
+      message: category.todo_count ? `${category.todo_count}件のタスクからこのカテゴリが外れます。タスク自体は削除されません。` : undefined,
+      confirmLabel: '削除',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await categoryService.deleteCategory(category.id);
       onChanged();

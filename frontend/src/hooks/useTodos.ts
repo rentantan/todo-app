@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import categoryService from '../services/categoryService';
 import todoService from '../services/todoService';
 import { Category, TodoInput, TodoQuery, TodoStats, TodoType } from '../types';
+import { useConfirm } from '../contexts/ConfirmContext';
 import { NotifyOptions } from './useToast';
 
 /** 削除を取り消せる猶予（ミリ秒） */
@@ -14,6 +15,7 @@ interface Notifier {
 
 /** タスク・統計・カテゴリの取得と、それらを変更する操作をまとめたフック */
 export const useTodos = (query: TodoQuery, { notify, notifyError }: Notifier) => {
+  const confirm = useConfirm();
   const [todos, setTodos] = useState<TodoType[]>([]);
   const [stats, setStats] = useState<TodoStats | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -162,7 +164,13 @@ export const useTodos = (query: TodoQuery, { notify, notifyError }: Notifier) =>
   };
 
   const clearCompleted = async () => {
-    if (!window.confirm(`完了済みのタスク ${stats?.completed_todos ?? 0} 件をすべて削除しますか？`)) return;
+    const ok = await confirm({
+      title: '完了タスクを削除しますか？',
+      message: `完了済みのタスク ${stats?.completed_todos ?? 0} 件をすべて削除します。この操作は取り消せません。`,
+      confirmLabel: '削除',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       const res = await todoService.clearCompleted();
       notify(res.message);

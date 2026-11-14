@@ -1,6 +1,7 @@
 import React from 'react';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
+import { ConfirmProvider } from './contexts/ConfirmContext';
 import { useDarkMode } from './hooks/useDarkMode';
 import TodoPage from './pages/TodoPage';
 
@@ -9,9 +10,11 @@ function App() {
   const [darkMode, setDarkMode] = useDarkMode();
   return (
     <AuthProvider>
-      <ProtectedRoute>
-        <TodoPage darkMode={darkMode} onToggleDarkMode={() => setDarkMode(!darkMode)} />
-      </ProtectedRoute>
+      <ConfirmProvider>
+        <ProtectedRoute>
+          <TodoPage darkMode={darkMode} onToggleDarkMode={() => setDarkMode(!darkMode)} />
+        </ProtectedRoute>
+      </ConfirmProvider>
     </AuthProvider>
   );
 }

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 interface HeaderProps {
   darkMode: boolean;
@@ -10,9 +11,10 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ darkMode, onToggleDarkMode, onBeforeLogout }) => {
   const { user, logout } = useAuth();
+  const confirm = useConfirm();
 
   const handleLogout = async () => {
-    if (!window.confirm('ログアウトしますか？')) return;
+    if (!(await confirm({ title: 'ログアウトしますか？', confirmLabel: 'ログアウト' }))) return;
     await onBeforeLogout?.();
     logout();
   };
