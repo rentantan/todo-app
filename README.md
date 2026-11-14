@@ -177,8 +177,8 @@ docker compose up --build
 todo-app/
 ├── backend/                  # Django REST API
 │   ├── config/               #   設定（settings.py / urls.py）
-│   ├── accounts/             #   ユーザー認証（カスタム User モデル・JWT）
-│   ├── todos/                #   タスク・カテゴリ（models / views / filters / tests）
+│   ├── accounts/             #   ユーザー認証（カスタム User モデル・JWT・tests）
+│   ├── todos/                #   タスク・カテゴリ（models / views / filters / stats / tests）
 │   ├── requirements.txt
 │   ├── .env.example
 │   ├── setup.sh              #   初回セットアップスクリプト
@@ -193,10 +193,12 @@ todo-app/
     │   │   ├── Layout/       #   ヘッダー・カード・トースト
     │   │   └── Todo/         #   タスクのフォーム・一覧・フィルター・進捗
     │   ├── contexts/         #   AuthContext（ログイン状態）
-    │   ├── hooks/            #   useDarkMode / useDebounce
+    │   ├── hooks/            #   useTodos（データ取得・操作）/ useToast / useDarkMode / useDebounce
+    │   ├── pages/            #   TodoPage（メイン画面）
     │   ├── services/         #   API 呼び出し（Axios）
-    │   ├── utils/            #   日付・エラー処理
-    │   ├── types.ts
+    │   ├── utils/            #   日付・エラー処理・フィルター条件
+    │   ├── constants.ts      #   優先度ラベルなどの定数
+    │   ├── types.ts          #   モデル・API リクエストの型
     │   └── App.tsx
     └── .env.example
 ```
