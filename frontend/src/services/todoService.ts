@@ -1,27 +1,5 @@
 import apiClient from './api';
-import { Priority, TodoStats, TodoType } from '../types';
-
-export interface TodoInput {
-  name: string;
-  description?: string;
-  priority?: Priority;
-  due_date?: string | null;
-  completed?: boolean;
-  category_ids?: string[];
-}
-
-export interface TodoQuery {
-  completed?: boolean;
-  priority?: Priority;
-  category?: string;
-  search?: string;
-  overdue?: boolean;
-  due_today?: boolean;
-  due_this_week?: boolean;
-  ordering?: string;
-}
-
-export type BulkAction = 'complete' | 'incomplete' | 'delete';
+import { BulkAction, TodoInput, TodoQuery, TodoStats, TodoType } from '../types';
 
 const todoService = {
   async getTodos(query: TodoQuery = {}): Promise<TodoType[]> {

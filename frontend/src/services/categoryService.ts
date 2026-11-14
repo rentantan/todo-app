@@ -1,10 +1,5 @@
 import apiClient from './api';
-import { Category } from '../types';
-
-export interface CategoryInput {
-  name: string;
-  color?: string;
-}
+import { Category, CategoryInput } from '../types';
 
 const categoryService = {
   async getCategories(): Promise<Category[]> {

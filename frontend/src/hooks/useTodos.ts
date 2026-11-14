@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import categoryService from '../services/categoryService';
-import todoService, { TodoInput, TodoQuery } from '../services/todoService';
-import { Category, TodoStats, TodoType } from '../types';
+import todoService from '../services/todoService';
+import { Category, TodoInput, TodoQuery, TodoStats, TodoType } from '../types';
 
 interface Notifier {
   notify: (text: string) => void;

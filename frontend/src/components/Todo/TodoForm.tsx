@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { TodoInput } from '../../services/todoService';
-import { Category, Priority } from '../../types';
+import { PRIORITIES, PRIORITY_LABELS } from '../../constants';
+import { Category, Priority, TodoInput } from '../../types';
 import { fromLocalInputValue } from '../../utils/date';
 import CategoryPicker from '../Category/CategoryPicker';
 
@@ -75,9 +75,7 @@ const TodoForm: React.FC<TodoFormProps> = ({ categories, onCreate }) => {
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <select name="priority" value={form.priority} onChange={handleChange} className="input" aria-label="優先度">
-              <option value="high">優先度: 高</option>
-              <option value="medium">優先度: 中</option>
-              <option value="low">優先度: 低</option>
+              {PRIORITIES.map((p) => <option key={p} value={p}>優先度: {PRIORITY_LABELS[p]}</option>)}
             </select>
             <input
               type="datetime-local"

@@ -1,7 +1,6 @@
 import React from 'react';
 import { DragDropContext, Draggable, Droppable, DropResult } from '@hello-pangea/dnd';
-import { TodoInput } from '../../services/todoService';
-import { Category, TodoType } from '../../types';
+import { Category, TodoInput, TodoType } from '../../types';
 import Todo from './Todo';
 
 interface TodoListProps {

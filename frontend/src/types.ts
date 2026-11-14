@@ -53,8 +53,31 @@ export interface RegisterData {
   password_confirm: string;
 }
 
-export const PRIORITY_LABELS: Record<Priority, string> = {
-  high: '高',
-  medium: '中',
-  low: '低',
-};
+// ---- API リクエスト ----
+
+export interface CategoryInput {
+  name: string;
+  color?: string;
+}
+
+export interface TodoInput {
+  name: string;
+  description?: string;
+  priority?: Priority;
+  due_date?: string | null;
+  completed?: boolean;
+  category_ids?: string[];
+}
+
+export interface TodoQuery {
+  completed?: boolean;
+  priority?: Priority;
+  category?: string;
+  search?: string;
+  overdue?: boolean;
+  due_today?: boolean;
+  due_this_week?: boolean;
+  ordering?: string;
+}
+
+export type BulkAction = 'complete' | 'incomplete' | 'delete';

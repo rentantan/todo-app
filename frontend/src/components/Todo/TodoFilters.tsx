@@ -1,4 +1,5 @@
 import React from 'react';
+import { PRIORITIES, PRIORITY_LABELS } from '../../constants';
 import { Category, Priority, TodoStats } from '../../types';
 import { DEFAULT_FILTERS, FilterState, hasActiveFilters } from '../../utils/todoFilters';
 
@@ -51,9 +52,7 @@ const TodoFilters: React.FC<TodoFiltersProps> = ({ filters, onChange, stats, cat
           aria-label="優先度で絞り込み"
         >
           <option value="">すべての優先度</option>
-          <option value="high">優先度: 高</option>
-          <option value="medium">優先度: 中</option>
-          <option value="low">優先度: 低</option>
+          {PRIORITIES.map((p) => <option key={p} value={p}>優先度: {PRIORITY_LABELS[p]}</option>)}
         </select>
 
         {categories.length > 0 && (

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { DraggableProvidedDragHandleProps } from '@hello-pangea/dnd';
-import { TodoInput } from '../../services/todoService';
-import { Category, PRIORITY_LABELS, TodoType } from '../../types';
+import { PRIORITIES, PRIORITY_LABELS } from '../../constants';
+import { Category, TodoInput, TodoType } from '../../types';
 import { formatDateTime, fromLocalInputValue, isOverdue, toLocalInputValue } from '../../utils/date';
 import CategoryBadge from '../Category/CategoryBadge';
 import CategoryPicker from '../Category/CategoryPicker';
@@ -76,9 +76,7 @@ const Todo: React.FC<TodoProps> = ({ todo, categories, dragHandleProps, onToggle
           placeholder="説明（任意）" rows={2} className="input w-full resize-none" />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <select name="priority" value={edit.priority} onChange={handleEditChange} className="input" aria-label="優先度">
-            <option value="high">優先度: 高</option>
-            <option value="medium">優先度: 中</option>
-            <option value="low">優先度: 低</option>
+            {PRIORITIES.map((p) => <option key={p} value={p}>優先度: {PRIORITY_LABELS[p]}</option>)}
           </select>
           <input type="datetime-local" name="due_date" value={edit.due_date} onChange={handleEditChange} className="input" aria-label="期限" />
         </div>

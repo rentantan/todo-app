@@ -1,5 +1,4 @@
-import { TodoQuery } from '../services/todoService';
-import { Priority } from '../types';
+import { Priority, TodoQuery } from '../types';
 
 /** 画面上のフィルター状態 */
 export interface FilterState {
