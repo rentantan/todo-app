@@ -119,6 +119,7 @@ docker compose up --build
 | `DATABASE_URL` | SQLite (`backend/db.sqlite3`) | 例: `postgresql://user:pass@localhost:5432/db` |
 | `JWT_ACCESS_MINUTES` | `60` | アクセストークンの有効期限（分） |
 | `JWT_REFRESH_DAYS` | `7` | リフレッシュトークンの有効期限（日） |
+| `AUTH_THROTTLE_RATE` | `10/min` | ログイン・登録の回数制限（IP ごと） |
 
 ### フロントエンド（`frontend/.env`）
 

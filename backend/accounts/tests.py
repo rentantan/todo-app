@@ -1,9 +1,14 @@
+from django.core.cache import cache
 from rest_framework.test import APITestCase
 
 PASSWORD = 'Str0ng-Passw0rd!'
 
 
 class AuthApiTests(APITestCase):
+    def setUp(self):
+        # 回数制限のカウントはキャッシュに残るため、テストごとにリセットする
+        cache.clear()
+
     def register(self, email='alice@example.com', username='alice'):
         return self.client.post('/api/auth/register/', {
             'email': email, 'username': username,
@@ -46,3 +51,9 @@ class AuthApiTests(APITestCase):
         res = self.client.post('/api/auth/login/', {'email': 'alice@example.com', 'password': 'nope'}, format='json')
         self.assertEqual(res.status_code, 400)
 
+    def test_login_is_throttled(self):
+        self.register()
+        for _ in range(9):  # 登録 1 回 + ログイン 9 回 = 上限 10 回
+            self.client.post('/api/auth/login/', {'email': 'alice@example.com', 'password': 'nope'}, format='json')
+        res = self.client.post('/api/auth/login/', {'email': 'alice@example.com', 'password': PASSWORD}, format='json')
+        self.assertEqual(res.status_code, 429)

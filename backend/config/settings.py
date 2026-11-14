@@ -130,6 +130,10 @@ REST_FRAMEWORK = {
     ],
     # Todo の並び替え（ドラッグ＆ドロップ）は全件が揃っている前提のため、ページネーションは使わない
     'DEFAULT_PAGINATION_CLASS': None,
+    # ログイン・登録の総当たり攻撃対策（IP アドレスごと）
+    'DEFAULT_THROTTLE_RATES': {
+        'auth': config('AUTH_THROTTLE_RATE', default='10/min'),
+    },
 }
 
 # JWT settings
