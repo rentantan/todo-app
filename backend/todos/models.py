@@ -29,23 +29,42 @@ class Todo(models.Model):
 
     class Meta:
         ordering = ['order_index', '-created_at']
+        indexes = [
+            # 一覧（並び順）・統計・期限での絞り込みは常にユーザー単位で行う
+            models.Index(fields=['user', 'order_index'], name='todo_user_order_idx'),
+            models.Index(fields=['user', 'completed'], name='todo_user_completed_idx'),
+            models.Index(fields=['user', 'due_date'], name='todo_user_due_idx'),
+        ]
         verbose_name = 'Todo'
         verbose_name_plural = 'Todos'
 
     def __str__(self):
         return f"{self.name} - {self.user.email}"
 
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        instance = super().from_db(db, field_names, values)
+        # 読み込み時点の completed を覚えておき、保存時の追加クエリを省く
+        instance._loaded_completed = instance.__dict__.get('completed')
+        return instance
+
+    def _previous_completed(self):
+        if self._state.adding:
+            return False
+        loaded = getattr(self, '_loaded_completed', None)
+        if loaded is not None:
+            return loaded
+        # completed を遅延読み込みした場合などは DB から直前の値を取得する
+        return Todo.objects.filter(pk=self.pk).values_list('completed', flat=True).first()
+
     def save(self, *args, **kwargs):
         # completed の変化に合わせて completed_at を自動更新する
-        # （UUID は生成済みのため self.pk では新規判定できない。DB から直前の値を取得する）
-        old_completed = (
-            Todo.objects.filter(pk=self.pk).values_list('completed', flat=True).first()
-        )
-        if self.completed and not old_completed:
+        if self.completed and not self._previous_completed():
             self.completed_at = timezone.now()
         elif not self.completed:
             self.completed_at = None
         super().save(*args, **kwargs)
+        self._loaded_completed = self.completed
 
 class Category(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

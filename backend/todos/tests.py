@@ -74,12 +74,18 @@ class TodoApiTests(APITestCase):
         self.assertEqual(names, ['b', 'a'])
 
     def test_bulk_and_clear_completed(self):
-        ids = [str(Todo.objects.create(user=self.user, name=n).id) for n in 'abc']
+        ids = [str(Todo.objects.create(user=self.user, name=n).id) for n in 'abcd']
+        # カテゴリ付きでも、件数には連動削除された中間テーブルの行を含めない
+        category = Category.objects.create(user=self.user, name='work')
+        self.client.patch(f'/api/todos/{ids[0]}/', {'category_ids': [str(category.id)]}, format='json')
+
         res = self.client.post('/api/todos/bulk-update/', {'todo_ids': ids[:2], 'action': 'complete'}, format='json')
         self.assertEqual(res.data['count'], 2)
         res = self.client.delete('/api/todos/clear-completed/')
         self.assertEqual(res.data['count'], 2)
-        self.assertEqual(Todo.objects.filter(user=self.user).count(), 1)
+        res = self.client.post('/api/todos/bulk-update/', {'todo_ids': ids[2:], 'action': 'delete'}, format='json')
+        self.assertEqual(res.data['count'], 2)
+        self.assertEqual(Todo.objects.filter(user=self.user).count(), 0)
 
     def test_stats(self):
         Todo.objects.create(user=self.user, name='done', completed=True)
@@ -101,3 +107,22 @@ class TodoApiTests(APITestCase):
         self.assertEqual([t['name'] for t in res.data], ['today'])
         stats = self.client.get('/api/todos/stats/').data
         self.assertEqual(stats['due_today_todos'], len(res.data))
+
+    def test_completed_at_tracks_completed_without_extra_query(self):
+        todo = Todo.objects.create(user=self.user, name='t')
+        self.assertIsNone(todo.completed_at)
+
+        todo = Todo.objects.get(pk=todo.pk)
+        todo.completed = True
+        with self.assertNumQueries(1):  # UPDATE のみ（直前の値を取り直さない）
+            todo.save()
+        self.assertIsNotNone(todo.completed_at)
+
+        first_completed_at = todo.completed_at
+        todo.name = 'renamed'
+        todo.save()
+        self.assertEqual(todo.completed_at, first_completed_at)  # 完了のまま保存しても変わらない
+
+        todo.completed = False
+        todo.save()
+        self.assertIsNone(todo.completed_at)

@@ -100,8 +100,8 @@ def bulk_update_todos(request):
             count = todos.filter(completed=True).update(completed=False, completed_at=None)
             message = f'{count}件のTodoを未完了にしました。'
         else:
-            count = todos.count()
-            todos.delete()
+            # delete() の総数には連動削除された TodoCategory も含まれるため、Todo の件数だけを取り出す
+            count = todos.delete()[1].get(Todo._meta.label, 0)
             message = f'{count}件のTodoを削除しました。'
 
     return Response({'message': message, 'count': count})
@@ -111,8 +111,8 @@ def bulk_update_todos(request):
 @permission_classes([permissions.IsAuthenticated])
 def clear_completed_todos(request):
     """完了済みTodo一括削除"""
-    deleted_count = Todo.objects.filter(user=request.user, completed=True).count()
-    Todo.objects.filter(user=request.user, completed=True).delete()
+    _, per_model = Todo.objects.filter(user=request.user, completed=True).delete()
+    deleted_count = per_model.get(Todo._meta.label, 0)
     return Response({'message': f'{deleted_count}件の完了済みTodoを削除しました。', 'count': deleted_count})
 
 
