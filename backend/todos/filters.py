@@ -57,9 +57,9 @@ class TodoFilter(django_filters.FilterSet):
         return queryset
 
     def filter_due_today(self, queryset, name, value):
-        """今日期限のTodoをフィルター"""
+        """今日期限の未完了Todoをフィルター（統計の due_today_todos と同じ条件）"""
         if value:
-            return queryset.filter(due_date__date=timezone.localdate())
+            return queryset.filter(due_date__date=timezone.localdate(), completed=False)
         return queryset
 
     def filter_due_this_week(self, queryset, name, value):

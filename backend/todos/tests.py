@@ -90,3 +90,14 @@ class TodoApiTests(APITestCase):
         self.assertEqual(res.data['completed_todos'], 1)
         self.assertEqual(res.data['overdue_todos'], 1)
         self.assertEqual(res.data['today_completed'], 1)
+
+    def test_due_today_filter_matches_stats(self):
+        tonight = timezone.localtime().replace(hour=23, minute=59)
+        Todo.objects.create(user=self.user, name='today', due_date=tonight)
+        Todo.objects.create(user=self.user, name='today done', due_date=tonight, completed=True)
+        Todo.objects.create(user=self.user, name='tomorrow', due_date=tonight + timedelta(days=1))
+
+        res = self.client.get('/api/todos/', {'due_today': 'true'})
+        self.assertEqual([t['name'] for t in res.data], ['today'])
+        stats = self.client.get('/api/todos/stats/').data
+        self.assertEqual(stats['due_today_todos'], len(res.data))
