@@ -228,8 +228,11 @@ User ─┬─< Todo >──< TodoCategory >──┐
 |---|---|
 | バックエンドのテスト | `cd backend && python manage.py test` |
 | 管理ユーザーの作成 | `cd backend && python manage.py createsuperuser` |
-| フロントエンドの型チェック | `cd frontend && npx tsc --noEmit` |
+| フロントエンドのテスト | `cd frontend && npm run test:ci` |
+| フロントエンドの型チェック | `cd frontend && npm run typecheck` |
 | フロントエンドのビルド | `cd frontend && npm run build` |
+
+`master` への push と Pull Request では、GitHub Actions（`.github/workflows/ci.yml`）で上記のテスト・型チェック・ビルドとマイグレーション漏れのチェックが自動で実行されます。
 
 ---
 
