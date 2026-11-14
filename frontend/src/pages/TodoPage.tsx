@@ -3,23 +3,14 @@ import CategoryManager from '../components/Category/CategoryManager';
 import Card from '../components/Layout/Card';
 import Header from '../components/Layout/Header';
 import Toast from '../components/Layout/Toast';
-import TodoFilters, { DEFAULT_FILTERS, FilterState, hasActiveFilters } from '../components/Todo/TodoFilters';
+import TodoFilters from '../components/Todo/TodoFilters';
 import TodoForm from '../components/Todo/TodoForm';
 import TodoList from '../components/Todo/TodoList';
 import TodoStatsBar from '../components/Todo/TodoStatsBar';
 import { useDebounce } from '../hooks/useDebounce';
 import { useToast } from '../hooks/useToast';
 import { useTodos } from '../hooks/useTodos';
-import { TodoQuery } from '../services/todoService';
-
-const toQuery = (f: FilterState): TodoQuery => ({
-  search: f.search.trim() || undefined,
-  priority: f.priority,
-  category: f.category,
-  overdue: f.showOverdue,
-  due_today: f.showDueToday,
-  completed: f.status === 'all' ? undefined : f.status === 'completed',
-});
+import { DEFAULT_FILTERS, FilterState, hasActiveFilters, toQuery } from '../utils/todoFilters';
 
 interface TodoPageProps {
   darkMode: boolean;

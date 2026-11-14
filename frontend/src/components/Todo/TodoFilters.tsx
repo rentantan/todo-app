@@ -1,26 +1,6 @@
 import React from 'react';
 import { Category, Priority, TodoStats } from '../../types';
-
-export interface FilterState {
-  status: 'all' | 'active' | 'completed';
-  priority?: Priority;
-  category?: string;
-  search: string;
-  showOverdue: boolean;
-  showDueToday: boolean;
-}
-
-export const DEFAULT_FILTERS: FilterState = {
-  status: 'all',
-  priority: undefined,
-  category: undefined,
-  search: '',
-  showOverdue: false,
-  showDueToday: false,
-};
-
-export const hasActiveFilters = (f: FilterState) =>
-  f.status !== 'all' || !!f.priority || !!f.category || !!f.search.trim() || f.showOverdue || f.showDueToday;
+import { DEFAULT_FILTERS, FilterState, hasActiveFilters } from '../../utils/todoFilters';
 
 interface TodoFiltersProps {
   filters: FilterState;
