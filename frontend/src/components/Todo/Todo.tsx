@@ -7,6 +7,7 @@ import {
 } from '../../utils/date';
 import CategoryBadge from '../Category/CategoryBadge';
 import CategoryPicker from '../Category/CategoryPicker';
+import DueDateInput from './DueDateInput';
 
 interface TodoProps {
   todo: TodoType;
@@ -84,11 +85,11 @@ const Todo: React.FC<TodoProps> = ({ todo, categories, dragHandleProps, onToggle
         <input name="name" value={edit.name} onChange={handleEditChange} className="input w-full" autoFocus aria-label="タスク名" />
         <textarea name="description" value={edit.description} onChange={handleEditChange}
           placeholder="説明（任意）" rows={2} className="input w-full resize-none" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-start">
           <select name="priority" value={edit.priority} onChange={handleEditChange} className="input" aria-label="優先度">
             {PRIORITIES.map((p) => <option key={p} value={p}>優先度: {PRIORITY_LABELS[p]}</option>)}
           </select>
-          <input type="datetime-local" name="due_date" value={edit.due_date} onChange={handleEditChange} className="input" aria-label="期限" />
+          <DueDateInput value={edit.due_date} onChange={(v) => setEdit((prev) => ({ ...prev, due_date: v }))} />
         </div>
         <CategoryPicker categories={categories} selectedIds={edit.category_ids}
           onChange={(ids) => setEdit((prev) => ({ ...prev, category_ids: ids }))} />

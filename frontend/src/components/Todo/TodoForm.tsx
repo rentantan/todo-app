@@ -3,6 +3,7 @@ import { PRIORITIES, PRIORITY_LABELS } from '../../constants';
 import { Category, Priority, TodoInput } from '../../types';
 import { fromLocalInputValue } from '../../utils/date';
 import CategoryPicker from '../Category/CategoryPicker';
+import DueDateInput from './DueDateInput';
 
 interface TodoFormProps {
   categories: Category[];
@@ -73,18 +74,11 @@ const TodoForm: React.FC<TodoFormProps> = ({ categories, onCreate }) => {
             rows={2}
             className="input w-full resize-none"
           />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
             <select name="priority" value={form.priority} onChange={handleChange} className="input" aria-label="優先度">
               {PRIORITIES.map((p) => <option key={p} value={p}>優先度: {PRIORITY_LABELS[p]}</option>)}
             </select>
-            <input
-              type="datetime-local"
-              name="due_date"
-              value={form.due_date}
-              onChange={handleChange}
-              className="input"
-              aria-label="期限"
-            />
+            <DueDateInput value={form.due_date} onChange={(v) => setForm((prev) => ({ ...prev, due_date: v }))} />
           </div>
           <CategoryPicker
             categories={categories}
