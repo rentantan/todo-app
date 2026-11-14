@@ -4,13 +4,17 @@ import { useAuth } from '../../contexts/AuthContext';
 interface HeaderProps {
   darkMode: boolean;
   onToggleDarkMode: () => void;
+  /** ログアウト前に済ませておく処理（猶予中の削除の確定など） */
+  onBeforeLogout?: () => Promise<void>;
 }
 
-const Header: React.FC<HeaderProps> = ({ darkMode, onToggleDarkMode }) => {
+const Header: React.FC<HeaderProps> = ({ darkMode, onToggleDarkMode, onBeforeLogout }) => {
   const { user, logout } = useAuth();
 
-  const handleLogout = () => {
-    if (window.confirm('ログアウトしますか？')) logout();
+  const handleLogout = async () => {
+    if (!window.confirm('ログアウトしますか？')) return;
+    await onBeforeLogout?.();
+    logout();
   };
 
   const displayName = [user?.last_name, user?.first_name].filter(Boolean).join(' ') || user?.username;

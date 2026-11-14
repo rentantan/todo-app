@@ -2,9 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import categoryService from '../services/categoryService';
 import todoService from '../services/todoService';
 import { Category, TodoInput, TodoQuery, TodoStats, TodoType } from '../types';
+import { NotifyOptions } from './useToast';
+
+/** 削除を取り消せる猶予（ミリ秒） */
+const UNDO_MS = 5000;
 
 interface Notifier {
-  notify: (text: string) => void;
+  notify: (text: string, type?: 'success' | 'error', options?: NotifyOptions) => void;
   notifyError: (err: unknown, fallback: string) => void;
 }
 
@@ -17,13 +21,16 @@ export const useTodos = (query: TodoQuery, { notify, notifyError }: Notifier) =>
 
   // 古いリクエストの結果で新しい結果を上書きしないためのカウンター
   const requestId = useRef(0);
+  // 「元に戻す」の猶予中で、まだサーバーから削除していないタスク
+  const pendingDelete = useRef<{ todo: TodoType; timer: number } | null>(null);
 
   const reload = useCallback(async () => {
     const id = ++requestId.current;
     try {
       const [list, s] = await Promise.all([todoService.getTodos(query), todoService.getStats()]);
       if (id !== requestId.current) return;
-      setTodos(list);
+      const hiddenId = pendingDelete.current?.todo.id;
+      setTodos(hiddenId ? list.filter((t) => t.id !== hiddenId) : list);
       setStats(s);
     } catch (err) {
       if (id === requestId.current) notifyError(err, 'タスクの読み込みに失敗しました。');
@@ -83,17 +90,52 @@ export const useTodos = (query: TodoQuery, { notify, notifyError }: Notifier) =>
     }
   };
 
-  const remove = async (todo: TodoType) => {
-    if (!window.confirm(`「${todo.name}」を削除しますか？`)) return;
-    setTodos((prev) => prev.filter((t) => t.id !== todo.id));
+  /** 猶予中の削除を確定してサーバーに送る */
+  const commitDelete = useCallback(async () => {
+    const pending = pendingDelete.current;
+    if (!pending) return;
+    pendingDelete.current = null;
+    window.clearTimeout(pending.timer);
     try {
-      await todoService.deleteTodo(todo.id);
-      notify('タスクを削除しました。');
+      await todoService.deleteTodo(pending.todo.id);
     } catch (err) {
       notifyError(err, 'タスクを削除できませんでした。');
     }
     reload();
     reloadCategories();
+  }, [notifyError, reload, reloadCategories]);
+
+  const undoDelete = useCallback(() => {
+    const pending = pendingDelete.current;
+    if (!pending) return;
+    pendingDelete.current = null;
+    window.clearTimeout(pending.timer);
+    reload();
+  }, [reload]);
+
+  // 画面を離れる・閉じるときは猶予中の削除を確定する
+  const commitRef = useRef(commitDelete);
+  commitRef.current = commitDelete;
+  useEffect(() => {
+    const onUnload = () => {
+      if (pendingDelete.current) todoService.deleteTodoOnUnload(pendingDelete.current.todo.id);
+    };
+    window.addEventListener('pagehide', onUnload);
+    return () => {
+      window.removeEventListener('pagehide', onUnload);
+      commitRef.current();
+    };
+  }, []);
+
+  /** 確認ダイアログを出さずにすぐ消し、数秒間は「元に戻す」で取り消せるようにする */
+  const remove = (todo: TodoType) => {
+    commitDelete(); // 前の削除が猶予中なら先に確定する
+    setTodos((prev) => prev.filter((t) => t.id !== todo.id));
+    pendingDelete.current = { todo, timer: window.setTimeout(commitDelete, UNDO_MS) };
+    notify(`「${todo.name}」を削除しました。`, 'success', {
+      action: { label: '元に戻す', onClick: undoDelete },
+      duration: UNDO_MS,
+    });
   };
 
   const reorder = async (reordered: TodoType[]) => {
@@ -151,5 +193,6 @@ export const useTodos = (query: TodoQuery, { notify, notifyError }: Notifier) =>
     completeVisible,
     clearCompleted,
     refreshAll,
+    flushPendingDelete: commitDelete,
   };
 };

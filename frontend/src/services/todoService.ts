@@ -1,4 +1,4 @@
-import apiClient from './api';
+import apiClient, { BASE_URL, tokenStorage } from './api';
 import { BulkAction, TodoInput, TodoQuery, TodoStats, TodoType } from '../types';
 
 const todoService = {
@@ -19,6 +19,15 @@ const todoService = {
   },
   async deleteTodo(id: string): Promise<void> {
     await apiClient.delete(`/todos/${id}/`);
+  },
+  /** ページを閉じる途中でも届くよう keepalive 付きで削除する */
+  deleteTodoOnUnload(id: string): void {
+    const token = tokenStorage.getAccess();
+    fetch(`${BASE_URL}/todos/${id}/`, {
+      method: 'DELETE',
+      keepalive: true,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }).catch(() => {});
   },
   async toggleTodo(id: string): Promise<TodoType> {
     return (await apiClient.patch<TodoType>(`/todos/${id}/toggle/`)).data;

@@ -32,13 +32,13 @@ const TodoPage: React.FC<TodoPageProps> = ({ darkMode, onToggleDarkMode }) => {
 
   const {
     todos, stats, categories, isLoading, visibleActive,
-    create, toggle, update, remove, reorder, completeVisible, clearCompleted, refreshAll,
+    create, toggle, update, remove, reorder, completeVisible, clearCompleted, refreshAll, flushPendingDelete,
   } = useTodos(query, { notify, notifyError });
 
   return (
     <div className="min-h-screen flex justify-center items-start p-2 sm:p-6">
       <Card>
-        <Header darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} />
+        <Header darkMode={darkMode} onToggleDarkMode={onToggleDarkMode} onBeforeLogout={flushPendingDelete} />
         <TodoForm categories={categories} onCreate={create} />
         <CategoryManager categories={categories} onChanged={refreshAll} onError={(m) => notify(m, 'error')} />
         <TodoStatsBar stats={stats} />
