@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { DraggableProvidedDragHandleProps } from '@hello-pangea/dnd';
 import { PRIORITIES, PRIORITY_LABELS } from '../../constants';
 import { Category, TodoInput, TodoType } from '../../types';
-import { formatDateTime, fromLocalInputValue, isOverdue, toLocalInputValue } from '../../utils/date';
+import {
+  describeDue, DueStatus, formatDateTime, formatRelativeDateTime, fromLocalInputValue, isOverdue, toLocalInputValue,
+} from '../../utils/date';
 import CategoryBadge from '../Category/CategoryBadge';
 import CategoryPicker from '../Category/CategoryPicker';
 
@@ -21,6 +23,13 @@ const PRIORITY_STYLES = {
   low: { border: 'border-green-400', badge: 'text-green-700 bg-green-100 dark:text-green-300 dark:bg-green-900/50' },
 };
 
+const DUE_TEXT_STYLES: Record<DueStatus, string> = {
+  overdue: 'text-red-600 dark:text-red-400 font-medium',
+  today: 'text-orange-600 dark:text-orange-400 font-medium',
+  soon: 'text-amber-600 dark:text-amber-400',
+  later: '',
+};
+
 const toEditState = (todo: TodoType) => ({
   name: todo.name,
   description: todo.description ?? '',
@@ -36,6 +45,7 @@ const Todo: React.FC<TodoProps> = ({ todo, categories, dragHandleProps, onToggle
 
   const overdue = isOverdue(todo.due_date, todo.completed);
   const styles = PRIORITY_STYLES[todo.priority];
+  const due = todo.due_date && !todo.completed ? describeDue(todo.due_date) : null;
 
   const startEdit = () => {
     setEdit(toEditState(todo));
@@ -134,9 +144,18 @@ const Todo: React.FC<TodoProps> = ({ todo, categories, dragHandleProps, onToggle
           )}
 
           <div className="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap gap-x-4 gap-y-1">
-            {todo.due_date && <span className={overdue ? 'text-red-600 dark:text-red-400 font-medium' : ''}>⏰ 期限: {formatDateTime(todo.due_date)}</span>}
-            {todo.completed_at && <span className="text-green-600 dark:text-green-400">✓ 完了: {formatDateTime(todo.completed_at)}</span>}
-            <span>作成: {formatDateTime(todo.created_at)}</span>
+            {todo.due_date && (
+              <span className={due ? DUE_TEXT_STYLES[due.status] : ''} title={formatDateTime(todo.due_date)}>
+                ⏰ 期限: {formatRelativeDateTime(todo.due_date)}
+                {due?.hint && `（${due.hint}）`}
+              </span>
+            )}
+            {todo.completed_at && (
+              <span className="text-green-600 dark:text-green-400" title={formatDateTime(todo.completed_at)}>
+                ✓ 完了: {formatRelativeDateTime(todo.completed_at)}
+              </span>
+            )}
+            <span title={formatDateTime(todo.created_at)}>作成: {formatRelativeDateTime(todo.created_at)}</span>
           </div>
         </div>
         <div className="flex gap-1 shrink-0">
